@@ -214,25 +214,38 @@ function recognizeDict() {
     dict.start({ language: lang }).catch(err => fail(err.code));
   });
 }
+let srLang = null; // 设定的口音不被支持时，改用美式英语
 function recognize() {
   if (dict) return recognizeDict();
   return new Promise((resolve, reject) => {
     if (!SR || inArtifact) return reject(new Error("unsupported"));
     if (synth) synth.cancel();
+    const lang = srLang || S.settings.recLang;
     const r = new SR();
-    r.lang = S.settings.recLang; r.interimResults = false; r.continuous = false; r.maxAlternatives = 5;
+    r.lang = lang; r.interimResults = false; r.continuous = false; r.maxAlternatives = 5;
     const alts = []; let done = false;
     r.onresult = e => { for (const res of e.results) for (const a of res) alts.push(a.transcript); };
-    r.onerror = e => { done = true; activeRec = null; reject(new Error(e.error)); };
+    r.onerror = e => {
+      if (done) return;
+      done = true; activeRec = null;
+      let code = e.error || "unknown";
+      if (code === "language-not-supported" && lang !== "en-US") { srLang = "en-US"; code = "retry_lang"; }
+      // 有些浏览器出错后仍给出了识别结果，有结果就照常打分
+      if (alts.length && code !== "retry_lang") resolve(alts); else reject(new Error(code));
+    };
     r.onend = () => { activeRec = null; if (!done) { done = true; resolve(alts); } };
-    activeRec = r; r.start();
+    activeRec = r;
+    try { r.start(); } catch (err) { done = true; activeRec = null; reject(new Error("start_failed")); }
   });
 }
 function recErrMsg(err) {
   const m = { "not-allowed": "麦克风权限被拒绝，请在地址栏左侧允许麦克风", "no-speech": "没有听到声音，再试一次", "network": "语音识别需要联网", "audio-capture": "找不到麦克风", "unsupported": "此浏览器不支持语音识别，请用电脑上的 Chrome 或 Edge 打开",
     "not_granted": "麦克风没有授权。可以在页面的权限菜单里打开", "dismissed": "授权提示被关掉了，再点一次 🎤 即可", "retry_lang": "已切换识别语言，请再点一次 🎤",
-    "rate_limited": "语音识别忙，稍等几秒再试", "upstream_error": "麦克风或语音服务出错，再试一次", "unavailable": "这个账号或浏览器暂时不能用语音识别", "stopped": "已停止", "no_gesture": "请直接点击 🎤 按钮开始" };
-  return m[err.message] || "识别出错：" + err.message;
+    "rate_limited": "语音识别忙，稍等几秒再试", "upstream_error": "麦克风或语音服务出错，再试一次", "unavailable": "这个账号或浏览器暂时不能用语音识别", "stopped": "已停止", "no_gesture": "请直接点击 🎤 按钮开始",
+    "service-not-allowed": "设备不允许网页使用语音识别。iPad 请检查：①「设置 → 通用 → 键盘」打开“启用听写”；②「设置 → Safari → 麦克风」选“询问”或“允许”；③ 用 Safari 打开，不要用 Chrome",
+    "aborted": "录音被打断了，再点一次试试", "language-not-supported": "不支持这个识别语言，请在设置里把“语音识别口音”改成美国英语",
+    "start_failed": "录音没能开始，稍等一下再点一次", "bad-grammar": "识别出错，再试一次" };
+  return m[err.message] || "识别出错（" + err.message + "），再试一次，或改用键盘听写";
 }
 
 // ---------- 句子比对 ----------
@@ -623,7 +636,11 @@ function bindShadow(btn, target, out, onScore) {
       out.innerHTML = `<div class="result-box">${scoreHTML(c.score)}${diffHTML(c, false)}<div class="heard">识别到：${esc(alts[0])}</div></div>`;
       onScore && onScore(c);
     } catch (err) {
-      out.innerHTML = `<div class="heard" style="color:var(--bad)">${recErrMsg(err)}</div>`;
+      const soft = ["no-speech", "aborted", "retry_lang", "stopped", "dismissed"].includes(err.message);
+      out.innerHTML = `<div class="heard err-msg" style="color:var(--bad)">${esc(recErrMsg(err))}</div>
+        ${soft ? "" : `<div class="row ts-row"><button class="ghost use-typed">⌨️ 改用键盘听写</button></div>`}`;
+      const alt = $(".use-typed", out);
+      if (alt) alt.onclick = () => showTypedShadow(target, out, onScore);
     } finally { btn.classList.remove("on"); btn.textContent = label; }
   };
 }
