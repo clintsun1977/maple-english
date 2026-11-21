@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maple English</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">🍁 Maple English</div>
+  <nav id="tabs">
+    <button data-tab="home" class="active">今日</button>
+    <button data-tab="vocab">单词</button>
+    <button data-tab="listen">听写</button>
+    <button data-tab="speak">口语</button>
+    <button data-tab="cbc">CBC 计划</button>
+    <button data-tab="settings">设置</button>
+  </nav>
+  <div class="userbox">
+    <span id="syncBadge" class="muted small"></span>
+    <button id="btnSwitchUser" class="ghost" title="切换用户">👤 <span id="userName"></span></button>
+  </div>
+</header>
+
+<!-- 用户名登录 -->
+<div id="login" class="login" hidden>
+  <div class="card login-card">
+    <div class="brand">🍁 Maple English</div>
+    <h2>输入你的名字开始学习</h2>
+    <p class="muted small">每个名字有自己独立的学习进度，一家人可以各用各的名字。</p>
+    <form id="loginForm" class="row">
+      <input id="loginName" maxlength="30" placeholder="例如：Wei" autocomplete="nickname" aria-label="你的名字">
+      <button class="primary" type="submit">开始</button>
+    </form>
+    <div id="knownUsers" class="row known"></div>
+    <p class="muted small" id="loginNote"></p>
+  </div>
+</div>
+
+<main>
+  <!-- 今日 -->
+  <section id="home" class="page active">
+    <div class="hero">
+      <div>
+        <h1>今天也练 30 分钟</h1>
+        <p class="muted">单词 → 听写 → 口语，按这个顺序完成三项目标。</p>
+      </div>
+      <div class="streak"><span id="streakNum">0</span><small>连续天数</small></div>
+    </div>
+    <div class="goals" id="goals"></div>
+    <div class="card">
+      <h3>学习统计</h3>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="card tip" id="dailyTip"></div>
+  </section>
+
+  <!-- 单词 -->
+  <section id="vocab" class="page">
+    <div class="toolbar">
+      <div class="seg" id="vocabMode">
+        <button data-mode="read" class="active">看词</button>
+        <button data-mode="listen">听词</button>
+      </div>
+      <span class="muted" id="vocabQueueInfo"></span>
+      <button class="ghost" id="btnAddWord">＋ 添加生词</button>
+    </div>
+    <div class="flash card" id="flash"></div>
+    <div class="dock" id="vocabDock"></div>
+    <details class="card">
+      <summary>📚 我的词库（<span id="deckCount">0</span>）</summary>
+      <div class="filters" id="deckFilters"></div>
+      <input id="deckSearch" placeholder="搜索英文或中文……">
+      <p class="muted small" id="deckShown"></p>
+      <div id="deckList" class="decklist"></div>
+    </details>
+  </section>
+
+  <!-- 听写 -->
+  <section id="listen" class="page">
+    <div class="toolbar">
+      <div class="seg" id="dictLevel">
+        <button data-lv="1" class="active">L1 日常</button>
+        <button data-lv="2">L2 新闻短句</button>
+        <button data-lv="3">L3 新闻长句</button>
+      </div>
+      <span class="muted" id="dictProgress"></span>
+    </div>
+    <div class="dock" id="dictDock">
+      <button class="big" id="dictPlay">▶ 播放</button>
+      <button id="dictSlow">🐢 慢速</button>
+      <button class="primary" id="dictCheck">✓ 检查</button>
+      <button id="dictNext">下一句 →</button>
+    </div>
+    <div class="card">
+      <div class="row dict-meta">
+        <span class="muted" id="dictPlays">已听 0 次</span>
+        <button class="ghost" id="dictReveal">直接看答案</button>
+      </div>
+      <textarea id="dictInput" rows="3" placeholder="把听到的句子打出来，按 Enter 检查（Shift+Enter 换行）"></textarea>
+      <div id="dictResult"></div>
+    </div>
+    <p class="muted small">方法：先不看文字听 2–3 遍再写；看答案后，再跟读 3 遍，直到能脱稿说出来。</p>
+  </section>
+
+  <!-- 口语 -->
+  <section id="speak" class="page">
+    <div class="scenes" id="scenes"></div>
+    <div class="card" id="dialog"></div>
+  </section>
+
+  <!-- CBC 计划 -->
+  <section id="cbc" class="page">
+    <div class="card">
+      <h2>从零到听懂 CBC 新闻的路线</h2>
+      <ol class="steps">
+        <li><b>第 1–4 周：打基础</b><br>每天在这里完成单词 + L1/L2 听写 + 口语情景。外部材料先用 <a href="https://www.cbc.ca/kidsnews" target="_blank" rel="noopener">CBC Kids News</a>（语言简单、话题真实）。</li>
+        <li><b>第 5–8 周：短新闻</b><br>每天听 <a href="https://www.cbc.ca/listen" target="_blank" rel="noopener">CBC Listen</a> 上的 <i>The World This Hour</i>（每小时一期、约 5 分钟的新闻简报），同一期听 3 遍。</li>
+        <li><b>第 9–12 周：长新闻</b><br>看 YouTube 上的 <i>CBC News: The National</i> 片段，开英文字幕，挑一段做精听。</li>
+        <li><b>之后：播客和广播</b><br><i>Front Burner</i>（每期深挖一个新闻）、<i>As It Happens</i>（采访类节目）。</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>精听四步法（每天 15 分钟）</h3>
+      <ol>
+        <li><b>盲听</b>：不看文字听一遍，说出大意（用中文也行）。</li>
+        <li><b>对照</b>：看文字稿或字幕，标出听不懂的词。是不认识，还是认识但没听出来？</li>
+        <li><b>精练</b>：挑 2–3 句做听写和跟读。生词点"添加生词"放进单词本。</li>
+        <li><b>再听</b>：关掉文字再听一遍，你会发现清楚很多。</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>开口的真实场景（免费）</h3>
+      <ul>
+        <li><b>LINC 课程</b>：联邦政府资助的成人免费英语课，永久居民可以报名，先去当地移民服务机构做语言水平测评（CLB）。</li>
+        <li><b>图书馆英语角</b>：大部分公共图书馆有免费的 <i>English Conversation Circle</i>，适合练口语。</li>
+        <li><b>日常小目标</b>：每天主动和一个陌生人说一句话，比如收银员、邻居、公交司机。</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 设置 -->
+  <section id="settings" class="page">
+    <div class="card form">
+      <div class="form-row">
+        <span class="label">按钮布局</span>
+        <div class="seg" id="setLayout">
+          <button type="button" data-l="right">👉 右手</button>
+          <button type="button" data-l="left">👈 左手</button>
+          <button type="button" data-l="top">⬆️ 顶部</button>
+        </div>
+        <p class="muted small">右手 / 左手：导航和主要按钮放在屏幕一侧，方便拿着 iPad 用大拇指点（默认右手，电脑上也一样）。只对这台设备有效。</p>
+      </div>
+      <div class="form-row">
+        <span class="label">男声 / 女声</span>
+        <div class="seg" id="setGender">
+          <button type="button" data-g="female">👩 女声</button>
+          <button type="button" data-g="male">👨 男声</button>
+        </div>
+        <p class="muted small" id="genderNote"></p>
+      </div>
+      <label>朗读声音
+        <select id="setVoice"></select>
+      </label>
+      <label>朗读语速 <span id="rateVal"></span>
+        <input type="range" id="setRate" min="0.6" max="1.3" step="0.05">
+      </label>
+      <label>每天新词数量
+        <input type="number" id="setNewPerDay" min="5" max="50">
+      </label>
+      <label>每日听写目标（句）
+        <input type="number" id="setDictGoal" min="3" max="50">
+      </label>
+      <label>每日口语目标（句）
+        <input type="number" id="setSpeakGoal" min="3" max="50">
+      </label>
+      <label>语音识别口音
+        <select id="setRecLang">
+          <option value="en-CA">英语（加拿大）</option>
+          <option value="en-US">英语（美国）</option>
+          <option value="en-GB">英语（英国）</option>
+        </select>
+      </label>
+      <button class="ghost" id="btnTestVoice">🔊 试听声音</button>
+      <p class="muted small">建议用 <b>Microsoft Edge</b> 打开，有自然的 "Natural" 神经网络声音，语音识别也最稳定。Chrome 也可以。</p>
+    </div>
+    <div class="card">
+      <h3>数据</h3>
+      <p class="muted small">学习进度保存在本浏览器里。换电脑前先导出备份。</p>
+      <div class="row">
+        <button class="ghost" id="btnExport">导出备份</button>
+        <button class="ghost" id="btnImport">导入备份</button>
+        <input type="file" id="importFile" accept=".json" hidden>
+        <button class="danger" id="btnReset">清空所有进度</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 添加生词弹窗 -->
+<dialog id="addDlg">
+  <form method="dialog" class="form">
+    <h3>添加生词</h3>
+    <label>单词 / 短语 <input id="addW" required></label>
+    <label>中文意思 <input id="addZh"></label>
+    <label>例句（可以粘贴新闻原句） <textarea id="addEx" rows="2"></textarea></label>
+    <div class="row">
+      <button value="cancel" class="ghost" formnovalidate>取消</button>
+      <button value="ok" class="primary" id="addOk">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 确认框 -->
+<dialog id="confirmDlg">
+  <form method="dialog" class="form">
+    <p id="confirmMsg"></p>
+    <div class="row">
+      <button value="cancel" class="ghost">取消</button>
+      <button value="ok" class="danger" id="confirmOk">确定</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+
+<script src="data.js"></script>
+<script src="data/v01.js"></script>
+<script src="data/v02.js"></script>
+<script src="data/v03.js"></script>
+<script src="data/v04.js"></script>
+<script src="data/v05.js"></script>
+<script src="data/v06.js"></script>
+<script src="data/v07.js"></script>
+<script src="data/v08.js"></script>
+<script src="data/v09.js"></script>
+<script src="data/v10.js"></script>
+<script src="data/v11.js"></script>
+<script src="data/v12.js"></script>
+<script src="data/v13.js"></script>
+<script src="data/v14.js"></script>
+<script src="data/v15.js"></script>
+<script src="data/v16.js"></script>
+<script src="data/v17.js"></script>
+<script src="data/v18.js"></script>
+<script src="data/v19.js"></script>
+<script src="data/v20.js"></script>
+<script src="data/v21.js"></script>
+<script src="data/v22.js"></script>
+<script src="data/v23.js"></script>
+<script src="data/v24.js"></script>
+<script src="data/d1.js"></script>
+<script src="data/d2.js"></script>
+<script src="data/d3.js"></script>
+<script src="data/d4.js"></script>
+<script src="data/d5.js"></script>
+<script src="data/d6.js"></script>
+<script src="data/d7.js"></script>
+<script src="data/d8.js"></script>
+<script src="data/d9.js"></script>
+<script src="data/s1.js"></script>
+<script src="data/s2.js"></script>
+<script src="data/s3.js"></script>
+<script src="data/s4.js"></script>
+<script src="data/s5.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
