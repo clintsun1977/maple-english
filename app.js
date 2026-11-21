@@ -193,7 +193,7 @@ let activeRec = null;
 let dict = null, dictLang = null;
 if (inArtifact) claude.use("dictation").then(d => { dict = d; if (curTab === "speak") renderSpeak(); }).catch(() => {});
 const canRecognize = () => !!(dict || (SR && !inArtifact));
-function recognizeDict() {
+function recognizeDict(onInterim) {
   return new Promise((resolve, reject) => {
     let text = "", done = false, idle = null;
     const lang = dictLang || S.settings.recLang;
@@ -203,8 +203,8 @@ function recognizeDict() {
       finish(() => reject(new Error(code)));
     };
     const armIdle = () => { clearTimeout(idle); idle = setTimeout(() => dict.stop(), 1800); }; // 停顿约 2 秒自动结束
-    const offF = dict.onFinal(e => { text += e.text; armIdle(); });
-    const offP = dict.onPartial(e => { if (e.text) armIdle(); });
+    const offF = dict.onFinal(e => { text += e.text; armIdle(); if (onInterim) onInterim(text.trim()); });
+    const offP = dict.onPartial(e => { if (e.text) { armIdle(); if (onInterim) onInterim((text + " " + e.text).trim()); } });
     const offS = dict.onState(e => {
       if (e.state !== "idle" || !e.reason) return;
       if (!text && ["not_granted", "unavailable", "rate_limited", "upstream_error", "dismissed"].includes(e.reason)) fail(e.reason);
@@ -215,27 +215,38 @@ function recognizeDict() {
   });
 }
 let srLang = null; // 设定的口音不被支持时，改用美式英语
-function recognize() {
-  if (dict) return recognizeDict();
+// 浏览器自带识别。iPad Safari 常常只给临时结果、等不到最终结果，
+// 所以边说边收临时结果，停顿约 2 秒自动结束，用最后识别到的文字打分。
+function recognize(onInterim) {
+  if (dict) return recognizeDict(onInterim);
   return new Promise((resolve, reject) => {
     if (!SR || inArtifact) return reject(new Error("unsupported"));
     if (synth) synth.cancel();
     const lang = srLang || S.settings.recLang;
     const r = new SR();
-    r.lang = lang; r.interimResults = false; r.continuous = false; r.maxAlternatives = 5;
-    const alts = []; let done = false;
-    r.onresult = e => { for (const res of e.results) for (const a of res) alts.push(a.transcript); };
+    r.lang = lang; r.interimResults = true; r.continuous = true; r.maxAlternatives = 5;
+    let latest = "", altSet = [], done = false, idle = null;
+    const cap = setTimeout(() => { try { r.stop(); } catch { /* ignore */ } }, 15000);
+    const armIdle = () => { clearTimeout(idle); idle = setTimeout(() => { try { r.stop(); } catch { /* ignore */ } }, 1800); };
+    const results = () => [...new Set([latest, ...altSet].map(s => s.trim()).filter(Boolean))];
+    const finish = fn => { if (done) return; done = true; clearTimeout(idle); clearTimeout(cap); activeRec = null; fn(); };
+    r.onresult = e => {
+      let text = "";
+      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
+      latest = text.trim();
+      if (e.results.length === 1) altSet = [...e.results[0]].map(a => a.transcript);
+      if (onInterim) onInterim(latest);
+      armIdle();
+    };
     r.onerror = e => {
-      if (done) return;
-      done = true; activeRec = null;
       let code = e.error || "unknown";
       if (code === "language-not-supported" && lang !== "en-US") { srLang = "en-US"; code = "retry_lang"; }
-      // 有些浏览器出错后仍给出了识别结果，有结果就照常打分
-      if (alts.length && code !== "retry_lang") resolve(alts); else reject(new Error(code));
+      // 出错但已经识别到内容（比如被打断），照常打分
+      finish(() => (results().length && code !== "retry_lang") ? resolve(results()) : reject(new Error(code)));
     };
-    r.onend = () => { activeRec = null; if (!done) { done = true; resolve(alts); } };
-    activeRec = r;
-    try { r.start(); } catch (err) { done = true; activeRec = null; reject(new Error("start_failed")); }
+    r.onend = () => finish(() => resolve(results()));
+    activeRec = { stop: () => { try { r.stop(); } catch { finish(() => resolve(results())); } } };
+    try { r.start(); } catch { finish(() => reject(new Error("start_failed"))); }
   });
 }
 function recErrMsg(err) {
@@ -627,10 +638,15 @@ function bindShadow(btn, target, out, onScore) {
     if (activeRec) { activeRec.stop(); return; }
     const label = btn.textContent;
     btn.classList.add("on"); btn.textContent = "■ 说完点这里";
-    out.innerHTML = `<div class="heard">🎙️ 正在听……请读出句子</div>`;
+    out.innerHTML = `<div class="heard">🎙️ 正在听……请读出句子，说完停一下会自动结束</div><div class="live"></div>`;
     try {
-      const alts = await recognize();
-      if (!alts.length) { out.innerHTML = `<div class="heard">没有识别到内容，再试一次</div>`; return; }
+      const alts = await recognize(text => { const lv = $(".live", out); if (lv) lv.textContent = text; });
+      if (!alts.length) {
+        out.innerHTML = `<div class="heard err-msg">没有识别到内容。请靠近一点、大声一点再试；如果总是这样，可以改用键盘听写。</div>
+          <div class="row ts-row"><button class="ghost use-typed">⌨️ 改用键盘听写</button></div>`;
+        $(".use-typed", out).onclick = () => showTypedShadow(target, out, onScore);
+        return;
+      }
       const c = bestOf(target, alts);
       recordSpeak(c);
       out.innerHTML = `<div class="result-box">${scoreHTML(c.score)}${diffHTML(c, false)}<div class="heard">识别到：${esc(alts[0])}</div></div>`;
