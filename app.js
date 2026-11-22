@@ -582,45 +582,63 @@ function dictPlay(mul) {
   dictPlays++; renderDict(); speak(curDict().en, mul);
   if (!isTouch) $("#dictInput").focus(); // 触屏设备不自动弹出键盘，等用户自己点输入框
 }
-$("#dictPlay").onclick = () => dictPlay(1);
-$("#dictSlow").onclick = () => dictPlay(0.7);
 $("#dictLevel").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   dictLv = +b.dataset.lv; $$("#dictLevel button").forEach(x => x.classList.toggle("active", x === b));
   resetDict();
 });
-function resetDict() { dictPlays = 0; dictChecked = false; $("#dictInput").value = ""; $("#dictResult").innerHTML = ""; renderDict(); }
-function showDictResult(c, counted) {
+// 右侧按钮区：检查前后按钮数量相同、位置一一对应（播放↔再听，慢速↔慢速，检查↔跟读，空位↔错词，下一句不变）
+let dictResultMode = false, dictLastC = null;
+function renderDictDock() {
+  const dock = $("#dictDock"), d = curDict(), c = dictLastC;
+  const spacer = `<button class="dock-spacer" tabindex="-1" aria-hidden="true">＋</button>`;
+  if (!dictResultMode) {
+    dock.innerHTML = `<button class="big" id="dictPlay">▶ 播放</button><button id="dictSlow">🐢 慢速</button>
+      <button class="primary" id="dictCheck">✓ 检查</button>${spacer}<button id="dictNext">下一句 →</button>`;
+    $("#dictPlay").onclick = () => dictPlay(1);
+    $("#dictSlow").onclick = () => dictPlay(0.7);
+    $("#dictCheck").onclick = doDictCheck;
+  } else {
+    dock.innerHTML = `<button id="dRe">🔊 再听</button><button id="dReSlow">🐢 慢速</button>
+      <button id="dShadow" class="rec">🎤 跟读这句</button>
+      ${c && c.missed.length ? `<button id="dAddMiss">＋ 错词入生词本</button>` : spacer}<button id="dictNext">下一句 →</button>`;
+    $("#dRe").onclick = () => speak(d.en);
+    $("#dReSlow").onclick = () => speak(d.en, 0.7);
+    bindShadow($("#dShadow"), d.en, $("#dShadowRes"));
+    if ($("#dAddMiss")) $("#dAddMiss").onclick = () => {
+      const words = [...new Set(c.missed.join(" ").split(/\s+/).map(w => w.replace(/[^A-Za-z'-]/g, "")).filter(w => w.length > 2))];
+      const added = words.filter(w => addWord(w, "", d.en));
+      toast(added.length ? `已加入：${added.join(", ")}` : "这些词已在词库中");
+    };
+  }
+  $("#dictNext").onclick = () => { S.dictIdx[dictLv]++; save(); resetDict(); dictPlay(1); };
+}
+function resetDict() {
+  dictPlays = 0; dictChecked = false; dictResultMode = false; dictLastC = null;
+  $("#dictInput").value = ""; $("#dictResult").innerHTML = "";
+  renderDict(); renderDictDock();
+}
+function showDictResult(c) {
   const d = curDict();
+  dictLastC = c; dictResultMode = true;
   $("#dictResult").innerHTML = `<div class="result-box">
     ${c ? scoreHTML(c.score) : `<span class="muted">答案：</span>`}
     ${c ? diffHTML(c) : `<div class="diff">${esc(d.en)}</div>`}
     <div class="muted">${esc(d.zh)}</div>
-    <div class="row" style="margin-top:12px">
-      <button id="dRe">🔊 再听</button><button id="dReSlow">🐢 慢速</button>
-      <button id="dShadow" class="rec">🎤 跟读这句</button>
-      ${c && c.missed.length ? `<button class="ghost" id="dAddMiss">＋ 错词加入生词本</button>` : ""}
-    </div>
     <div id="dShadowRes"></div></div>`;
-  $("#dRe").onclick = () => speak(d.en);
-  $("#dReSlow").onclick = () => speak(d.en, 0.7);
-  bindShadow($("#dShadow"), d.en, $("#dShadowRes"));
-  if ($("#dAddMiss")) $("#dAddMiss").onclick = () => {
-    const words = [...new Set(c.missed.join(" ").split(/\s+/).map(w => w.replace(/[^A-Za-z'-]/g, "")).filter(w => w.length > 2))];
-    const added = words.filter(w => addWord(w, "", d.en));
-    toast(added.length ? `已加入：${added.join(", ")}` : "这些词已在词库中");
-  };
+  renderDictDock();
 }
-$("#dictCheck").onclick = () => {
+function doDictCheck() {
   const val = $("#dictInput").value.trim();
   if (!val) return toast("先把听到的内容打出来");
   const c = compare(curDict().en, val);
   if (!dictChecked) { today().dict++; S.dictStats.n++; S.dictStats.sum += c.score; save(); dictChecked = true; }
+  $("#dictInput").blur(); // 收起键盘，方便看结果
   showDictResult(c); renderDict();
-};
+}
 $("#dictReveal").onclick = () => showDictResult(null);
-$("#dictNext").onclick = () => { S.dictIdx[dictLv]++; save(); resetDict(); dictPlay(1); };
-$("#dictInput").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#dictCheck").click(); } });
+$("#dictInput").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doDictCheck(); } });
+renderDictDock();
 
 // 跟读按钮（听写和口语共用）
 function recordSpeak(c) { today().speak++; S.speakStats.n++; S.speakStats.sum += c.score; save(); }
