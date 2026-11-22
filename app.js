@@ -476,17 +476,20 @@ function renderFlash() {
     if (w.ex) html += `<div class="ex" id="fEx" title="点击朗读例句">🔈 ${esc(w.ex)}</div>`;
     if (w.ex && x.exZh) html += `<div class="ex-zh">${esc(x.exZh)}</div>`;
     const opts = [0, 1, 2, 3].map(q => ivLabel(nextState(c, q)));
-    if (w.ex) dockHtml += `<button id="fExPlay">🔈 例句</button>`;
+    dockHtml += w.ex ? `<button id="fExPlay">🔈 例句</button>` : `<button class="dock-spacer" tabindex="-1" aria-hidden="true">🔈</button>`;
     dockHtml += `
       <button class="rate-btn r3" data-q="3">简单<small>${opts[3]}</small></button>
       <button class="rate-btn r2" data-q="2">记得<small>${opts[2]}</small></button>
       <button class="rate-btn r1" data-q="1">模糊<small>${opts[1]}</small></button>
       <button class="rate-btn r0" data-q="0">忘了<small>${opts[0]}</small></button>`;
   } else {
-    dockHtml += `<button class="primary big" id="fReveal">显示答案</button>`;
+    dockHtml += `<button class="primary" id="fReveal">显示答案</button>`;
+    // 隐形占位：让按钮区高度和显示答案后一样，"发音""显示答案"正好在"发音""例句"的位置
+    dockHtml += `<button class="rate-btn dock-spacer" tabindex="-1" aria-hidden="true">简单<small>-</small></button>`.repeat(4);
   }
   el.innerHTML = html;
   dock.innerHTML = dockHtml;
+  dock.classList.toggle("pre", !revealed); // 显示答案前不画底板，避免占位处出现空白框
   $("#fPlay").onclick = () => speak(w.w, 0.9);
   if ($("#fReveal")) $("#fReveal").onclick = reveal;
   if ($("#fEx")) $("#fEx").onclick = () => speak(w.ex);

@@ -185,6 +185,11 @@ summary { cursor: pointer; font-weight: 600; }
 .dock .rate-btn small { display: block; color: var(--muted); font-size: 12px; }
 .dock .r0 { border-color: var(--bad); color: var(--bad); }
 .dock .r3 { border-color: var(--ok); color: var(--ok); }
+.dock-spacer { display: none; }
+body.layout-right .dock .dock-spacer, body.layout-left .dock .dock-spacer { display: block; visibility: hidden; pointer-events: none; }
+body.layout-right .dock.pre, body.layout-left .dock.pre { background: transparent; border-color: transparent; box-shadow: none; pointer-events: none; }
+body.layout-right .dock.pre button, body.layout-left .dock.pre button { pointer-events: auto; }
+body.layout-right .dock.pre .dock-spacer, body.layout-left .dock.pre .dock-spacer { pointer-events: none; }
 .dict-meta { justify-content: space-between; margin-bottom: 8px; }
 
 /* ===== 右手 / 左手布局：导航竖排在屏幕一侧靠下，主要按钮固定在同一侧的下半部 ===== */
@@ -243,6 +248,7 @@ body.layout-right .flash { min-height: 260px; }
     bottom: calc(72px + env(safe-area-inset-bottom, 0px) + var(--kb, 0px));
   }
   body.layout-right .dock button, body.layout-left .dock button { width: auto; flex: 1 1 0; min-width: 0; font-size: 14px; padding: 8px 4px; white-space: nowrap; }
+  body.layout-right .dock .dock-spacer, body.layout-left .dock .dock-spacer { display: none; }
   body.layout-right[data-tab] main, body.layout-left[data-tab] main { padding-right: 16px; padding-left: 16px; }
 }
 
