@@ -470,6 +470,7 @@ function renderFlash() {
     html += `<div class="zh">${esc(w.zh || "（未填写释义）")}</div>`;
     if (w.ex) html += `<div class="ex" id="fEx" title="点击朗读例句">🔈 ${esc(w.ex)}</div>`;
     const opts = [0, 1, 2, 3].map(q => ivLabel(nextState(c, q)));
+    if (w.ex) dockHtml += `<button id="fExPlay">🔈 例句</button>`;
     dockHtml += `
       <button class="rate-btn r3" data-q="3">简单<small>${opts[3]}</small></button>
       <button class="rate-btn r2" data-q="2">记得<small>${opts[2]}</small></button>
@@ -483,6 +484,7 @@ function renderFlash() {
   $("#fPlay").onclick = () => speak(w.w, 0.9);
   if ($("#fReveal")) $("#fReveal").onclick = reveal;
   if ($("#fEx")) $("#fEx").onclick = () => speak(w.ex);
+  if ($("#fExPlay")) $("#fExPlay").onclick = () => speak(w.ex);
   $$(".rate-btn", dock).forEach(b => b.onclick = () => rate(+b.dataset.q));
   if (!revealed) speak(w.w, 0.9);
 }
