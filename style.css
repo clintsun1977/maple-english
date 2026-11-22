@@ -119,6 +119,9 @@ input[type=range] { padding: 0; }
 .flash .word { font-size: 40px; font-weight: 700; letter-spacing: .5px; }
 .flash .tagpill { align-self: center; }
 .flash .zh { font-size: 22px; }
+.flash .ipa { font-size: 18px; color: var(--muted); font-family: "Segoe UI", "Lucida Sans Unicode", "Arial Unicode MS", sans-serif; margin-top: -6px; }
+.flash .en-def { font-size: 17px; max-width: 560px; align-self: center; }
+.flash .ex-zh { font-size: 15px; color: var(--muted); margin-top: -6px; }
 .flash .ex { font-size: 18px; color: var(--muted); cursor: pointer; }
 .flash .ex:hover { color: var(--text); }
 .rate { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
@@ -133,6 +136,8 @@ input[type=range] { padding: 0; }
 .decklist { max-height: 420px; overflow: auto; }
 .deckitem { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .deckitem b { min-width: 140px; cursor: pointer; }
+.deckitem .ipa-sm { white-space: nowrap; }
+@media (max-width: 600px) { .deckitem .ipa-sm { display: none; } }
 .deckitem .st { margin-left: auto; white-space: nowrap; font-size: 12px; }
 .deckitem .del { border: 0; padding: 0 4px; color: var(--muted); }
 summary { cursor: pointer; font-weight: 600; }

@@ -7,6 +7,7 @@ root = Path(__file__).parent
 html = (root / "index.html").read_text(encoding="utf-8")
 css = (root / "style.css").read_text(encoding="utf-8")
 body = re.search(r"<body>(.*)</body>", html, re.S).group(1).strip()
+body = re.sub(r'\?v=\w+"', '"', body)  # 网页版按文件路径发布，去掉版本号
 out = f"""<title>Maple English</title>
 <style>
 {css}

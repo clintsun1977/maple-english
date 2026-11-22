@@ -314,3 +314,12 @@ const SCENE_CATS = [
   ["transport", "交通出行"], ["work", "工作职场"], ["school", "学校与孩子"], ["social", "社交闲聊"],
   ["help", "求助与电话"], ["leisure", "休闲活动"],
 ];
+
+// 单词补充信息：音标、英文释义（英译英）、例句中文。每行：单词|音标|英文释义|例句中文
+const EXTRA = {};
+function addExtra(text) {
+  for (const line of text.split("\n")) {
+    const [w, ipa, en, exZh] = line.split("|").map(s => (s || "").trim());
+    if (w) EXTRA[w.toLowerCase()] = { ipa, en, exZh };
+  }
+}

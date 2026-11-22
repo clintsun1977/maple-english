@@ -390,6 +390,8 @@ $("#goals").addEventListener("click", e => { const g = e.target.closest("[data-g
 
 // ---------- 单词：间隔重复（SM-2 简化版） ----------
 const keyOf = w => w.w.toLowerCase();
+// 音标、英文释义、例句翻译（浏览器缓存了旧数据时可能没有，照常运行）
+const XTRA = typeof EXTRA !== "undefined" ? EXTRA : {};
 // 词库：去重后排定学习顺序——基础词在前，其余四类按比例均匀穿插，核心词用固定种子打乱
 const BASE = (() => {
   const seen = new Set();
@@ -459,16 +461,20 @@ function renderFlash() {
   const tagName = TAGS[w.tag] || w.tag;
   const isNew = !c;
   let html = `<span class="tagpill">${isNew ? "🆕 新词 · " : "🔁 复习 · "}${tagName}</span>`;
+  const x = XTRA[keyOf(w)] || {};
   if (vocabMode === "listen" && !revealed) {
     html += `<div class="word">🎧</div><p class="muted">先听，在心里想它的意思和拼写，再点「显示答案」。</p>`;
   } else {
     html += `<div class="word">${esc(w.w)}</div>`;
+    if (x.ipa) html += `<div class="ipa">${esc(x.ipa)}</div>`;
   }
   // 主要按钮放在 dock 里（右手/左手布局时固定在屏幕边上，方便大拇指点）
   let dockHtml = `<button id="fPlay">🔊 发音</button>`;
   if (revealed) {
     html += `<div class="zh">${esc(w.zh || "（未填写释义）")}</div>`;
+    if (x.en) html += `<div class="en-def"><span class="tagpill">EN</span> ${esc(x.en)}</div>`;
     if (w.ex) html += `<div class="ex" id="fEx" title="点击朗读例句">🔈 ${esc(w.ex)}</div>`;
+    if (w.ex && x.exZh) html += `<div class="ex-zh">${esc(x.exZh)}</div>`;
     const opts = [0, 1, 2, 3].map(q => ivLabel(nextState(c, q)));
     if (w.ex) dockHtml += `<button id="fExPlay">🔈 例句</button>`;
     dockHtml += `
@@ -533,7 +539,8 @@ function renderDeck() {
     const st = !c ? `<span class="muted">未学</span>` : c.iv >= 21 ? `<span style="color:var(--ok)">已掌握</span>` :
       c.due <= now ? `<span style="color:var(--accent)">待复习</span>` : `<span class="muted">${new Date(c.due).toLocaleDateString()} 复习</span>`;
     const del = w.tag === "mine" ? `<button class="del" data-del="${esc(w.w)}" title="删除">✕</button>` : "";
-    return `<div class="deckitem"><b data-say="${esc(w.w)}">${esc(w.w)}</b><span class="muted">${esc(w.zh)}</span><span class="st">${st}</span>${del}</div>`;
+    const ipa = (XTRA[keyOf(w)] || {}).ipa;
+    return `<div class="deckitem"><b data-say="${esc(w.w)}">${esc(w.w)}</b>${ipa ? `<span class="muted small ipa-sm">${esc(ipa)}</span>` : ""}<span class="muted">${esc(w.zh)}</span><span class="st">${st}</span>${del}</div>`;
   }).join("") || `<p class="muted">还没有内容</p>`;
 }
 $("#deckFilters").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { deckFilter = b.dataset.f; renderDeck(); } });
