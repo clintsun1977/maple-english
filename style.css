@@ -119,6 +119,11 @@ input[type=range] { padding: 0; }
 .flash .word { font-size: 40px; font-weight: 700; letter-spacing: .5px; }
 .flash .tagpill { align-self: center; }
 .flash .zh { font-size: 22px; }
+.flash .word.idiom { font-size: 32px; line-height: 1.25; text-wrap: balance; }
+.focus-card { padding-block: 14px; }
+.focus-row { justify-content: space-between; gap: 12px; }
+.focus-row h3 { margin: 0; }
+.focus-card p { margin: 8px 0 0; }
 .flash .ipa { font-size: 18px; color: var(--muted); font-family: "Segoe UI", "Lucida Sans Unicode", "Arial Unicode MS", sans-serif; margin-top: -6px; }
 .flash .en-def { font-size: 17px; max-width: 560px; align-self: center; }
 .flash .ex-zh { font-size: 15px; color: var(--muted); margin-top: -6px; }

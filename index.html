@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Maple English</title>
-<link rel="stylesheet" href="style.css?v=202611221119">
+<link rel="stylesheet" href="style.css?v=202611231244">
 </head>
 <body>
 <header class="topbar">
@@ -12,6 +12,7 @@
   <nav id="tabs">
     <button data-tab="home" class="active">今日</button>
     <button data-tab="vocab">单词</button>
+    <button data-tab="idioms">俗语</button>
     <button data-tab="listen">听写</button>
     <button data-tab="speak">口语</button>
     <button data-tab="cbc">CBC 计划</button>
@@ -48,6 +49,17 @@
       </div>
       <div class="streak"><span id="streakNum">0</span><small>连续天数</small></div>
     </div>
+    <div class="card focus-card">
+      <div class="row focus-row">
+        <h3>学习方向</h3>
+        <div class="seg" id="focusSeg">
+          <button data-focus="balanced">⚖️ 均衡</button>
+          <button data-focus="news">📰 新闻为主</button>
+          <button data-focus="life">🏠 生活为主</button>
+        </div>
+      </div>
+      <p class="muted small" id="focusNote"></p>
+    </div>
     <div class="goals" id="goals"></div>
     <div class="card">
       <h3>学习统计</h3>
@@ -59,6 +71,10 @@
   <!-- 单词 -->
   <section id="vocab" class="page">
     <div class="toolbar">
+      <div class="seg" id="deckSwitch">
+        <button data-deck="words" class="active">📖 单词</button>
+        <button data-deck="idioms">💬 俗语</button>
+      </div>
       <div class="seg" id="vocabMode">
         <button data-mode="read" class="active">看词</button>
         <button data-mode="listen">听词</button>
@@ -69,7 +85,7 @@
     <div class="flash card" id="flash"></div>
     <div class="dock" id="vocabDock"></div>
     <details class="card">
-      <summary>📚 我的词库（<span id="deckCount">0</span>）</summary>
+      <summary><span id="deckTitle">📚 我的词库</span>（<span id="deckCount">0</span>）</summary>
       <div class="filters" id="deckFilters"></div>
       <input id="deckSearch" placeholder="搜索英文或中文……">
       <p class="muted small" id="deckShown"></p>
@@ -164,6 +180,9 @@
       <label>每天新词数量
         <input type="number" id="setNewPerDay" min="5" max="50">
       </label>
+      <label>每天新俗语数量
+        <input type="number" id="setIdiomPerDay" min="1" max="50">
+      </label>
       <label>每日听写目标（句）
         <input type="number" id="setDictGoal" min="3" max="50">
       </label>
@@ -220,66 +239,71 @@
 
 <div id="toast"></div>
 
-<script src="data.js?v=202611221119"></script>
-<script src="data/v01.js?v=202611221119"></script>
-<script src="data/v02.js?v=202611221119"></script>
-<script src="data/v03.js?v=202611221119"></script>
-<script src="data/v04.js?v=202611221119"></script>
-<script src="data/v05.js?v=202611221119"></script>
-<script src="data/v06.js?v=202611221119"></script>
-<script src="data/v07.js?v=202611221119"></script>
-<script src="data/v08.js?v=202611221119"></script>
-<script src="data/v09.js?v=202611221119"></script>
-<script src="data/v10.js?v=202611221119"></script>
-<script src="data/v11.js?v=202611221119"></script>
-<script src="data/v12.js?v=202611221119"></script>
-<script src="data/v13.js?v=202611221119"></script>
-<script src="data/v14.js?v=202611221119"></script>
-<script src="data/v15.js?v=202611221119"></script>
-<script src="data/v16.js?v=202611221119"></script>
-<script src="data/v17.js?v=202611221119"></script>
-<script src="data/v18.js?v=202611221119"></script>
-<script src="data/v19.js?v=202611221119"></script>
-<script src="data/v20.js?v=202611221119"></script>
-<script src="data/v21.js?v=202611221119"></script>
-<script src="data/v22.js?v=202611221119"></script>
-<script src="data/v23.js?v=202611221119"></script>
-<script src="data/v24.js?v=202611221119"></script>
-<script src="data/x01.js?v=202611221119"></script>
-<script src="data/x02.js?v=202611221119"></script>
-<script src="data/x03.js?v=202611221119"></script>
-<script src="data/x04.js?v=202611221119"></script>
-<script src="data/x05.js?v=202611221119"></script>
-<script src="data/x06.js?v=202611221119"></script>
-<script src="data/x07.js?v=202611221119"></script>
-<script src="data/x08.js?v=202611221119"></script>
-<script src="data/x09.js?v=202611221119"></script>
-<script src="data/x10.js?v=202611221119"></script>
-<script src="data/x11.js?v=202611221119"></script>
-<script src="data/x12.js?v=202611221119"></script>
-<script src="data/x13.js?v=202611221119"></script>
-<script src="data/x14.js?v=202611221119"></script>
-<script src="data/x15.js?v=202611221119"></script>
-<script src="data/x16.js?v=202611221119"></script>
-<script src="data/x17.js?v=202611221119"></script>
-<script src="data/x18.js?v=202611221119"></script>
-<script src="data/x19.js?v=202611221119"></script>
-<script src="data/x20.js?v=202611221119"></script>
-<script src="data/x21.js?v=202611221119"></script>
-<script src="data/d1.js?v=202611221119"></script>
-<script src="data/d2.js?v=202611221119"></script>
-<script src="data/d3.js?v=202611221119"></script>
-<script src="data/d4.js?v=202611221119"></script>
-<script src="data/d5.js?v=202611221119"></script>
-<script src="data/d6.js?v=202611221119"></script>
-<script src="data/d7.js?v=202611221119"></script>
-<script src="data/d8.js?v=202611221119"></script>
-<script src="data/d9.js?v=202611221119"></script>
-<script src="data/s1.js?v=202611221119"></script>
-<script src="data/s2.js?v=202611221119"></script>
-<script src="data/s3.js?v=202611221119"></script>
-<script src="data/s4.js?v=202611221119"></script>
-<script src="data/s5.js?v=202611221119"></script>
-<script src="app.js?v=202611221119"></script>
+<script src="data.js?v=202611231244"></script>
+<script src="data/v01.js?v=202611231244"></script>
+<script src="data/v02.js?v=202611231244"></script>
+<script src="data/v03.js?v=202611231244"></script>
+<script src="data/v04.js?v=202611231244"></script>
+<script src="data/v05.js?v=202611231244"></script>
+<script src="data/v06.js?v=202611231244"></script>
+<script src="data/v07.js?v=202611231244"></script>
+<script src="data/v08.js?v=202611231244"></script>
+<script src="data/v09.js?v=202611231244"></script>
+<script src="data/v10.js?v=202611231244"></script>
+<script src="data/v11.js?v=202611231244"></script>
+<script src="data/v12.js?v=202611231244"></script>
+<script src="data/v13.js?v=202611231244"></script>
+<script src="data/v14.js?v=202611231244"></script>
+<script src="data/v15.js?v=202611231244"></script>
+<script src="data/v16.js?v=202611231244"></script>
+<script src="data/v17.js?v=202611231244"></script>
+<script src="data/v18.js?v=202611231244"></script>
+<script src="data/v19.js?v=202611231244"></script>
+<script src="data/v20.js?v=202611231244"></script>
+<script src="data/v21.js?v=202611231244"></script>
+<script src="data/v22.js?v=202611231244"></script>
+<script src="data/v23.js?v=202611231244"></script>
+<script src="data/v24.js?v=202611231244"></script>
+<script src="data/x01.js?v=202611231244"></script>
+<script src="data/x02.js?v=202611231244"></script>
+<script src="data/x03.js?v=202611231244"></script>
+<script src="data/x04.js?v=202611231244"></script>
+<script src="data/x05.js?v=202611231244"></script>
+<script src="data/x06.js?v=202611231244"></script>
+<script src="data/x07.js?v=202611231244"></script>
+<script src="data/x08.js?v=202611231244"></script>
+<script src="data/x09.js?v=202611231244"></script>
+<script src="data/x10.js?v=202611231244"></script>
+<script src="data/x11.js?v=202611231244"></script>
+<script src="data/x12.js?v=202611231244"></script>
+<script src="data/x13.js?v=202611231244"></script>
+<script src="data/x14.js?v=202611231244"></script>
+<script src="data/x15.js?v=202611231244"></script>
+<script src="data/x16.js?v=202611231244"></script>
+<script src="data/x17.js?v=202611231244"></script>
+<script src="data/x18.js?v=202611231244"></script>
+<script src="data/x19.js?v=202611231244"></script>
+<script src="data/x20.js?v=202611231244"></script>
+<script src="data/x21.js?v=202611231244"></script>
+<script src="data/i1.js?v=202611231244"></script>
+<script src="data/i2.js?v=202611231244"></script>
+<script src="data/i3.js?v=202611231244"></script>
+<script src="data/i4.js?v=202611231244"></script>
+<script src="data/i5.js?v=202611231244"></script>
+<script src="data/d1.js?v=202611231244"></script>
+<script src="data/d2.js?v=202611231244"></script>
+<script src="data/d3.js?v=202611231244"></script>
+<script src="data/d4.js?v=202611231244"></script>
+<script src="data/d5.js?v=202611231244"></script>
+<script src="data/d6.js?v=202611231244"></script>
+<script src="data/d7.js?v=202611231244"></script>
+<script src="data/d8.js?v=202611231244"></script>
+<script src="data/d9.js?v=202611231244"></script>
+<script src="data/s1.js?v=202611231244"></script>
+<script src="data/s2.js?v=202611231244"></script>
+<script src="data/s3.js?v=202611231244"></script>
+<script src="data/s4.js?v=202611231244"></script>
+<script src="data/s5.js?v=202611231244"></script>
+<script src="app.js?v=202611231244"></script>
 </body>
 </html>

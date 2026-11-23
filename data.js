@@ -323,3 +323,16 @@ function addExtra(text) {
     if (w) EXTRA[w.toLowerCase()] = { ipa, en, exZh };
   }
 }
+
+// 俗语：每行 俗语|中文意思|英文解释|例句|例句中文
+const IDIOMS = [];
+const IDIOM_CATS = {
+  daily: "日常常用", people: "人际与情绪", work: "工作与做事", money: "金钱与时间",
+  sports: "体育与比赛", food: "食物与动物", body: "身体部位", proverb: "谚语格言",
+};
+function addIdioms(cat, text) {
+  for (const line of text.split("\n")) {
+    const [w, zh, en, ex, exZh] = line.split("|").map(s => (s || "").trim());
+    if (w) IDIOMS.push({ w, zh, en, ex, exZh, tag: cat, idiom: true });
+  }
+}

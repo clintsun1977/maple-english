@@ -8,7 +8,7 @@ const USERS_KEY = "maple-en-users", LAST_KEY = "maple-en-last";
 const inArtifact = !!(window.claude && window.claude.use);
 const DEFAULT = {
   updatedAt: 0,
-  settings: { voice: "", rate: 0.95, newPerDay: 15, dictGoal: 10, speakGoal: 10, recLang: "en-CA" },
+  settings: { voice: "", rate: 0.95, newPerDay: 15, dictGoal: 10, speakGoal: 10, recLang: "en-CA", focus: "balanced", idiomPerDay: 5 },
   cards: {},          // 单词复习状态 key -> {ef, iv, reps, due, lapses}
   custom: [],         // 自己添加的生词
   days: {},           // 'YYYY-MM-DD' -> {nw, rv, dict, speak}
@@ -329,16 +329,19 @@ function bestOf(target, alts) {
 // ---------- 标签页 ----------
 let curTab = "home";
 function showTab(t) {
+  const navTab = t; // 导航高亮用：俗语也是单词页，只是换成俗语库
+  if (t === "idioms") { setDeck("idioms"); t = "vocab"; }
+  else if (t === "vocab") setDeck("words");
   curTab = t;
   document.body.dataset.tab = t;
-  $$("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === t));
+  $$("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === navTab));
   $$(".page").forEach(p => p.classList.toggle("active", p.id === t));
   if (synth) synth.cancel();
   if (t === "home") renderHome();
   if (t === "vocab") { renderFlash(); renderDeck(); }
   if (t === "listen") renderDict();
   if (t === "speak") renderSpeak();
-  history.replaceState(null, "", "#" + t);
+  history.replaceState(null, "", "#" + navTab);
 }
 $("#tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
 
@@ -354,7 +357,7 @@ const TIPS = [
   "<b>eh</b> 是加拿大口头禅，放在句尾表示 \"对吧？\"：<i>Nice day, eh?</i>",
 ];
 function streak() {
-  const active = k => { const d = S.days[k]; return d && (d.nw + d.rv + d.dict + d.speak) > 0; };
+  const active = k => { const d = S.days[k]; return d && (d.nw + d.rv + d.dict + d.speak + (d.nwI || 0) + (d.rvI || 0)) > 0; };
   let n = 0, d = new Date();
   if (!active(dateKey(d))) d.setDate(d.getDate() - 1);
   while (active(dateKey(d))) { n++; d.setDate(d.getDate() - 1); }
@@ -362,10 +365,12 @@ function streak() {
 }
 function renderHome() {
   const t = today(), st = S.settings;
-  const due = dueCards().length;
+  const due = dueCards(wordDeck()).length;
   const vocabDone = t.nw >= st.newPerDay && due === 0;
+  const dueI = dueCards(IDIOM_LIST).length, nwI = t.nwI || 0;
   const goals = [
     { tab: "vocab", title: "📖 单词", num: `${t.nw}/${st.newPerDay}`, sub: `新词 · 已复习 ${t.rv} · 待复习 ${due}`, p: Math.min(1, t.nw / st.newPerDay) * (due ? 0.9 : 1), done: vocabDone },
+    { tab: "idioms", title: "💬 俗语", num: `${nwI}/${st.idiomPerDay}`, sub: `新俗语 · 待复习 ${dueI}`, p: Math.min(1, nwI / st.idiomPerDay) * (dueI ? 0.9 : 1), done: nwI >= st.idiomPerDay && dueI === 0 },
     { tab: "listen", title: "🎧 听写", num: `${t.dict}/${st.dictGoal}`, sub: "句", p: Math.min(1, t.dict / st.dictGoal), done: t.dict >= st.dictGoal },
     { tab: "speak", title: "🎤 口语", num: `${t.speak}/${st.speakGoal}`, sub: "句跟读", p: Math.min(1, t.speak / st.speakGoal), done: t.speak >= st.speakGoal },
   ];
@@ -376,10 +381,12 @@ function renderHome() {
       <div class="bar"><i style="width:${Math.round(g.p * 100)}%"></i></div>
     </div>`).join("");
   $("#streakNum").textContent = streak();
-  const cards = Object.values(S.cards);
+  const entries = Object.entries(S.cards);
+  const cards = entries.filter(([k]) => !k.startsWith("i:")).map(([, c]) => c);
+  const idiomCards = entries.filter(([k]) => k.startsWith("i:")).length;
   const avg = s => s.n ? Math.round(s.sum / s.n) : "–";
   $("#stats").innerHTML = [
-    ["已学单词", cards.length], ["已掌握（间隔≥21天）", cards.filter(c => c.iv >= 21).length],
+    ["已学单词", cards.length], ["已掌握（间隔≥21天）", cards.filter(c => c.iv >= 21).length], ["已学俗语", idiomCards],
     ["听写总句数", S.dictStats.n], ["听写平均分", avg(S.dictStats)],
     ["口语总句数", S.speakStats.n], ["口语平均分", avg(S.speakStats)],
   ].map(([k, v]) => `<div class="stat"><b>${v}</b><span class="muted small">${k}</span></div>`).join("");
@@ -389,36 +396,97 @@ function renderHome() {
 $("#goals").addEventListener("click", e => { const g = e.target.closest("[data-go]"); if (g) showTab(g.dataset.go); });
 
 // ---------- 单词：间隔重复（SM-2 简化版） ----------
-const keyOf = w => w.w.toLowerCase();
+// 俗语的复习记录加前缀 i:，和单词分开
+const keyOf = w => (w.idiom ? "i:" : "") + w.w.toLowerCase();
 // 音标、英文释义、例句翻译（浏览器缓存了旧数据时可能没有，照常运行）
 const XTRA = typeof EXTRA !== "undefined" ? EXTRA : {};
-// 词库：去重后排定学习顺序——基础词在前，其余四类按比例均匀穿插，核心词用固定种子打乱
-const BASE = (() => {
+// 词库分组：基础词单独放最前，其余按类别分组，核心词用固定种子打乱
+const VOCAB_SPLIT = (() => {
   const seen = new Set();
-  const initial = [], rest = [];
+  const initial = [], groups = {};
   VOCAB.forEach((w, i) => {
     const k = keyOf(w); if (seen.has(k)) return; seen.add(k);
-    (i < VOCAB_INITIAL ? initial : rest).push(w);
+    if (i < VOCAB_INITIAL) initial.push(w); else (groups[w.tag] ||= []).push(w);
   });
-  const groups = {};
-  rest.forEach(w => (groups[w.tag] ||= []).push(w));
   if (groups.core) { // 固定种子洗牌，保证每次打开顺序一致
     let seed = 20261121;
     const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
     const a = groups.core;
     for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   }
-  const spread = Object.values(groups).flatMap(g => g.map((w, i) => ({ w, pos: (i + 0.5) / g.length })));
-  spread.sort((a, b) => a.pos - b.pos);
-  return [...initial, ...spread.map(x => x.w)];
+  return { initial, groups };
 })();
-const deck = () => S.custom.length ? [...BASE, ...S.custom] : BASE;
+// 学习方向：决定新词出现顺序。均衡=各类按比例穿插；新闻/生活为主=该类出现得更早更密
+const FOCUS = { balanced: "⚖️ 均衡", news: "📰 新闻为主", life: "🏠 生活为主" };
+const FOCUS_NOTE = {
+  balanced: "生活、新闻、口语短语和核心词按比例穿插出现。",
+  news: "新词以新闻时事词为主，其次是核心词；听写默认从新闻短句开始。适合想尽快听懂 CBC 新闻。",
+  life: "新词以加拿大生活词和口语短语为主；听写换成日常短句、生活对话和新闻短句三级。适合先解决日常交流。",
+};
+const FOCUS_RATE = {
+  news: { news: 3, core: 2, phrasal: 0.6, life: 0.6 },
+  life: { life: 3, phrasal: 1.2, core: 1.5, news: 0.4 },
+};
+function computeBase(focus) {
+  const { initial, groups: g0 } = VOCAB_SPLIT, rate = FOCUS_RATE[focus];
+  // 选了侧重时，入门词也按各自分类参与加权穿插（同类内仍排在前面）
+  let groups = g0;
+  if (rate) {
+    groups = {};
+    for (const w of initial) (groups[w.tag] ||= []).push(w);
+    for (const [t, g] of Object.entries(g0)) (groups[t] ||= []).push(...g);
+  }
+  const spread = Object.entries(groups).flatMap(([tag, g]) =>
+    g.map((w, i) => ({ w, pos: rate ? (i + 0.5) / (rate[tag] || 1) : (i + 0.5) / g.length })));
+  spread.sort((a, b) => a.pos - b.pos);
+  return rate ? spread.map(x => x.w) : [...initial, ...spread.map(x => x.w)];
+}
+let BASE = computeBase("balanced");
+// 俗语库（去重）
+const IDIOM_LIST = (() => {
+  if (typeof IDIOMS === "undefined") return [];
+  const seen = new Set();
+  return IDIOMS.filter(w => { const k = keyOf(w); if (seen.has(k)) return false; seen.add(k); return true; });
+})();
+const IDIOM_TAGS = typeof IDIOM_CATS !== "undefined" ? IDIOM_CATS : {};
+let vocabDeck = "words"; // words=单词，idioms=俗语
+const isIdiom = () => vocabDeck === "idioms";
+const wordDeck = () => S.custom.length ? [...BASE, ...S.custom] : BASE;
+const deck = () => isIdiom() ? IDIOM_LIST : wordDeck();
 const TAGS = { news: "新闻", life: "生活", phrasal: "短语/口语", core: "核心词", mine: "我的生词" };
-function dueCards() {
+const tagsFor = () => isIdiom() ? IDIOM_TAGS : TAGS;
+const perDay = () => isIdiom() ? S.settings.idiomPerDay : S.settings.newPerDay;
+const newToday = () => isIdiom() ? (today().nwI || 0) : today().nw;
+function dueCards(list = deck()) {
   const now = Date.now();
-  return deck().filter(w => { const c = S.cards[keyOf(w)]; return c && c.due <= now; })
+  return list.filter(w => { const c = S.cards[keyOf(w)]; return c && c.due <= now; })
     .sort((a, b) => S.cards[keyOf(a)].due - S.cards[keyOf(b)].due);
 }
+function setDeck(d) {
+  if (vocabDeck === d) return;
+  vocabDeck = d; deckFilter = "all"; revealed = false; buildQueue();
+  $$("#deckSwitch button").forEach(b => b.classList.toggle("active", b.dataset.deck === d));
+  $("#btnAddWord").hidden = d === "idioms";
+  $("#deckTitle").textContent = d === "idioms" ? "📚 俗语库" : "📚 我的词库";
+}
+// 切换学习方向：重排新词顺序，听写换成对应的三级
+function applyFocus(resetDict = true) {
+  const f = FOCUS[S.settings.focus] ? S.settings.focus : "balanced";
+  BASE = computeBase(f);
+  $$("#focusSeg button").forEach(b => b.classList.toggle("active", b.dataset.focus === f));
+  $("#focusNote").textContent = FOCUS_NOTE[f];
+  if (!isIdiom()) buildQueue();
+  if (resetDict) { dictLv = f === "balanced" ? 1 : 2; $$("#dictLevel button").forEach(b => b.classList.toggle("active", +b.dataset.lv === dictLv)); resetDict_(); }
+}
+const resetDict_ = () => { if (typeof resetDict === "function") resetDict(); };
+$("#deckSwitch").addEventListener("click", e => {
+  const b = e.target.closest("[data-deck]"); if (b) showTab(b.dataset.deck === "idioms" ? "idioms" : "vocab");
+});
+$("#focusSeg").addEventListener("click", e => {
+  const b = e.target.closest("[data-focus]"); if (!b || b.dataset.focus === S.settings.focus) return;
+  S.settings.focus = b.dataset.focus; save(); applyFocus(true); renderHome();
+  toast(`学习方向：${FOCUS[b.dataset.focus]}。之后的新词和听写会按这个方向安排`);
+});
 function nextState(c, q) {
   c = c ? { ...c } : { ef: 2.5, iv: 0, reps: 0, lapses: 0 };
   if (q === 0) { c.reps = 0; c.iv = 0; c.lapses++; c.ef = Math.max(1.3, c.ef - 0.2); }
@@ -433,7 +501,7 @@ const ivLabel = c => c.iv === 0 ? "1分钟" : c.iv < 30 ? `${c.iv}天` : `${Math
 let queue = [], qPos = 0, revealed = false, vocabMode = "read";
 function buildQueue() {
   const due = dueCards();
-  const left = Math.max(0, S.settings.newPerDay - today().nw);
+  const left = Math.max(0, perDay() - newToday());
   const fresh = deck().filter(w => !S.cards[keyOf(w)]).slice(0, left);
   // 复习词和新词交替，避免一口气全是新词
   queue = []; let i = 0, j = 0;
@@ -451,21 +519,23 @@ function renderFlash() {
   $("#vocabQueueInfo").textContent = queue.length > qPos ? `剩余 ${queue.length - qPos} 张（新词 ${nNew}）` : "";
   const dock = $("#vocabDock");
   if (qPos >= queue.length) {
-    el.innerHTML = `<div style="font-size:48px">🎉</div><h2>今天的单词完成了！</h2>
-      <p class="muted">明天再来复习。也可以去练听写和口语，或者添加新闻里听到的生词。</p>`;
-    dock.innerHTML = `<button class="primary" id="moreNew">再学 5 个新词</button>`;
+    const what = isIdiom() ? "俗语" : "单词";
+    el.innerHTML = `<div style="font-size:48px">🎉</div><h2>今天的${what}完成了！</h2>
+      <p class="muted">明天再来复习。${isIdiom() ? "也可以切换到单词，或去练听写和口语。" : "也可以去练听写和口语，或者添加新闻里听到的生词。"}</p>`;
+    dock.innerHTML = `<button class="primary" id="moreNew">再学 5 个新${what}</button>`;
+    dock.classList.remove("pre");
     $("#moreNew").onclick = () => extraNew(5);
     return;
   }
   const w = queue[qPos], c = S.cards[keyOf(w)];
-  const tagName = TAGS[w.tag] || w.tag;
+  const tagName = tagsFor()[w.tag] || w.tag;
   const isNew = !c;
-  let html = `<span class="tagpill">${isNew ? "🆕 新词 · " : "🔁 复习 · "}${tagName}</span>`;
-  const x = XTRA[keyOf(w)] || {};
+  let html = `<span class="tagpill">${isNew ? (isIdiom() ? "🆕 新俗语 · " : "🆕 新词 · ") : "🔁 复习 · "}${tagName}</span>`;
+  const x = w.idiom ? { en: w.en, exZh: w.exZh } : (XTRA[keyOf(w)] || {});
   if (vocabMode === "listen" && !revealed) {
-    html += `<div class="word">🎧</div><p class="muted">先听，在心里想它的意思和拼写，再点「显示答案」。</p>`;
+    html += `<div class="word">🎧</div><p class="muted">先听，在心里想它的意思${isIdiom() ? "" : "和拼写"}，再点「显示答案」。</p>`;
   } else {
-    html += `<div class="word">${esc(w.w)}</div>`;
+    html += `<div class="word${w.idiom ? " idiom" : ""}">${esc(w.w)}</div>`;
     if (x.ipa) html += `<div class="ipa">${esc(x.ipa)}</div>`;
   }
   // 主要按钮放在 dock 里（右手/左手布局时固定在屏幕边上，方便大拇指点）
@@ -499,7 +569,7 @@ function renderFlash() {
 }
 function extraNew(n) {
   const fresh = deck().filter(w => !S.cards[keyOf(w)]).slice(0, n);
-  if (!fresh.length) return toast("词库里的词都学过了，添加些生词吧");
+  if (!fresh.length) return toast(isIdiom() ? "俗语都学过了" : "词库里的词都学过了，添加些生词吧");
   queue = fresh; qPos = 0; revealed = false; renderFlash();
 }
 function reveal() {
@@ -509,7 +579,9 @@ function reveal() {
 function rate(q) {
   const w = queue[qPos], k = keyOf(w), wasNew = !S.cards[k];
   S.cards[k] = nextState(S.cards[k], q);
-  const t = today(); wasNew ? t.nw++ : t.rv++;
+  const t = today();
+  if (w.idiom) { if (wasNew) t.nwI = (t.nwI || 0) + 1; else t.rvI = (t.rvI || 0) + 1; }
+  else if (wasNew) t.nw++; else t.rv++;
   save();
   if (q === 0) queue.splice(Math.min(queue.length, qPos + 4), 0, w); // 忘了的词几张之后再出现
   qPos++; revealed = false; renderFlash(); renderDeck();
@@ -529,7 +601,7 @@ document.addEventListener("keydown", e => {
 // 词库列表
 let deckFilter = "all";
 function renderDeck() {
-  const tags = [["all", "全部"], ...Object.entries(TAGS)];
+  const tags = [["all", "全部"], ...Object.entries(tagsFor())];
   $("#deckFilters").innerHTML = tags.map(([k, n]) => `<button data-f="${k}" class="${k === deckFilter ? "active" : ""}">${n}</button>`).join("");
   const q = $("#deckSearch").value.trim().toLowerCase();
   const all = deck().filter(w => (deckFilter === "all" || w.tag === deckFilter) && (!q || w.w.toLowerCase().includes(q) || (w.zh || "").includes(q)));
@@ -542,7 +614,7 @@ function renderDeck() {
     const st = !c ? `<span class="muted">未学</span>` : c.iv >= 21 ? `<span style="color:var(--ok)">已掌握</span>` :
       c.due <= now ? `<span style="color:var(--accent)">待复习</span>` : `<span class="muted">${new Date(c.due).toLocaleDateString()} 复习</span>`;
     const del = w.tag === "mine" ? `<button class="del" data-del="${esc(w.w)}" title="删除">✕</button>` : "";
-    const ipa = (XTRA[keyOf(w)] || {}).ipa;
+    const ipa = w.idiom ? "" : (XTRA[keyOf(w)] || {}).ipa;
     return `<div class="deckitem"><b data-say="${esc(w.w)}">${esc(w.w)}</b>${ipa ? `<span class="muted small ipa-sm">${esc(ipa)}</span>` : ""}<span class="muted">${esc(w.zh)}</span><span class="st">${st}</span>${del}</div>`;
   }).join("") || `<p class="muted">还没有内容</p>`;
 }
@@ -558,7 +630,7 @@ $("#deckList").addEventListener("click", async e => {
 });
 function addWord(w, zh, ex) {
   w = w.trim(); if (!w) return false;
-  if (deck().some(x => keyOf(x) === w.toLowerCase())) { toast(`"${w}" 已在词库中`); return false; }
+  if (wordDeck().some(x => keyOf(x) === w.toLowerCase())) { toast(`"${w}" 已在词库中`); return false; }
   S.custom.push({ w, zh: zh.trim(), ex: ex.trim(), tag: "mine" }); save(); return true;
 }
 $("#btnAddWord").onclick = () => { $("#addW").value = $("#addZh").value = $("#addEx").value = ""; $("#addDlg").showModal(); };
@@ -571,11 +643,30 @@ $("#addDlg").addEventListener("close", () => {
 
 // ---------- 听写 ----------
 let dictLv = 1, dictPlays = 0, dictChecked = false;
-const dictList = () => DICTATION.filter(d => d.lv === dictLv);
-const curDict = () => { const l = dictList(); return l[S.dictIdx[dictLv] % l.length]; };
+// 听写三级随学习方向变化：生活为主时换成 日常短句 / 生活对话（情景台词）/ 新闻短句
+const SCENE_LINES = (() => {
+  const seen = new Set(), out = [];
+  SCENARIOS.forEach(sc => sc.lines.forEach(l => {
+    if (l.en.split(/\s+/).length < 5 || seen.has(l.en)) return;
+    seen.add(l.en); out.push({ en: l.en, zh: l.zh });
+  }));
+  return out;
+})();
+function dictSets() {
+  const L = lv => DICTATION.filter(d => d.lv === lv);
+  return S.settings.focus === "life"
+    ? [["L1 日常短句", L(1), "1"], ["L2 生活对话", SCENE_LINES, "life2"], ["L3 新闻短句", L(2), "2"]]
+    : [["L1 日常", L(1), "1"], ["L2 新闻短句", L(2), "2"], ["L3 新闻长句", L(3), "3"]];
+}
+const dictKey = () => dictSets()[dictLv - 1][2];
+const dictPos = () => S.dictIdx[dictKey()] || 0;
+const dictList = () => dictSets()[dictLv - 1][1];
+const curDict = () => { const l = dictList(); return l[dictPos() % l.length]; };
 function renderDict() {
   const l = dictList();
-  $("#dictProgress").textContent = `第 ${(S.dictIdx[dictLv] % l.length) + 1} / ${l.length} 句 · 今日 ${today().dict} 句`;
+  $("#dictProgress").textContent = `第 ${(dictPos() % l.length) + 1} / ${l.length} 句 · 今日 ${today().dict} 句`;
+  const sets = dictSets();
+  $$("#dictLevel button").forEach(b => { b.textContent = sets[+b.dataset.lv - 1][0]; });
   $("#dictPlays").textContent = `已听 ${dictPlays} 次`;
 }
 function dictPlay(mul) {
@@ -611,7 +702,7 @@ function renderDictDock() {
       toast(added.length ? `已加入：${added.join(", ")}` : "这些词已在词库中");
     };
   }
-  $("#dictNext").onclick = () => { S.dictIdx[dictLv]++; save(); resetDict(); dictPlay(1); };
+  $("#dictNext").onclick = () => { S.dictIdx[dictKey()] = dictPos() + 1; save(); resetDict(); dictPlay(1); };
 }
 function resetDict() {
   dictPlays = 0; dictChecked = false; dictResultMode = false; dictLastC = null;
@@ -799,6 +890,7 @@ function bindSettings() {
   const st = S.settings;
   $("#setRate").value = st.rate; $("#rateVal").textContent = st.rate + "x";
   $("#setNewPerDay").value = st.newPerDay; $("#setDictGoal").value = st.dictGoal; $("#setSpeakGoal").value = st.speakGoal;
+  $("#setIdiomPerDay").value = st.idiomPerDay;
   $("#setRecLang").value = st.recLang;
 }
 $("#setGender").addEventListener("click", e => {
@@ -810,6 +902,7 @@ $("#setVoice").onchange = e => { voiceName = e.target.value; lsSet(VOICE_KEY, vo
 $("#setRate").oninput = e => { S.settings.rate = +e.target.value; $("#rateVal").textContent = S.settings.rate + "x"; save(); };
 const numSet = (id, k) => $(id).onchange = e => { const v = Math.max(1, Math.min(50, parseInt(e.target.value) || DEFAULT.settings[k])); S.settings[k] = v; e.target.value = v; save(); };
 numSet("#setNewPerDay", "newPerDay"); numSet("#setDictGoal", "dictGoal"); numSet("#setSpeakGoal", "speakGoal");
+numSet("#setIdiomPerDay", "idiomPerDay");
 $("#setRecLang").onchange = e => { S.settings.recLang = e.target.value; save(); };
 $("#btnTestVoice").onclick = () => speak("Good evening. Here's a look at the top stories from across the country tonight.");
 $("#btnExport").onclick = async () => {
@@ -827,7 +920,7 @@ $("#importFile").onchange = async e => {
   try {
     const data = JSON.parse(await f.text());
     if (!data.cards || !data.settings) throw new Error("bad");
-    S = deepMerge(structuredClone(DEFAULT), data); save(); bindSettings(); loadVoices(); buildQueue(); toast("导入成功"); showTab("home");
+    S = deepMerge(structuredClone(DEFAULT), data); save(); bindSettings(); loadVoices(); applyFocus(true); buildQueue(); toast("导入成功"); showTab("home");
   } catch { toast("文件格式不正确"); }
   e.target.value = "";
 };
@@ -891,9 +984,9 @@ async function login(name) {
   $("#userName").textContent = name;
   btn.disabled = false; btn.textContent = "开始";
   $("#login").hidden = true;
-  bindSettings(); loadVoices(); buildQueue();
+  bindSettings(); loadVoices(); applyFocus(true); buildQueue();
   const initTab = location.hash.slice(1);
-  showTab($$(".page").some(p => p.id === initTab) && initTab !== "settings" ? initTab : "home");
+  showTab(($$(".page").some(p => p.id === initTab) || initTab === "idioms") && initTab !== "settings" ? initTab : "home");
   toast(`你好，${name}！`);
 }
 
