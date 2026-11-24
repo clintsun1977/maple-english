@@ -6,6 +6,7 @@
   --line: #e5e1d8;
   --accent: #c8102e;
   --accent-soft: #fde8eb;
+  --ex: #1a4f8b;
   --ok: #15803d;
   --ok-soft: #dcfce7;
   --bad: #b91c1c;
@@ -23,6 +24,7 @@
     --line: #33373d;
     --accent: #ff5a6e;
     --accent-soft: #3a1f25;
+    --ex: #8ab8ee;
     --ok: #4ade80;
     --ok-soft: #173322;
     --bad: #f87171;
@@ -34,7 +36,7 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #15171a; --card: #1f2226; --text: #e8e6e3; --muted: #9aa0a6; --line: #33373d;
-  --accent: #ff5a6e; --accent-soft: #3a1f25; --ok: #4ade80; --ok-soft: #173322;
+  --accent: #ff5a6e; --accent-soft: #3a1f25; --ex: #8ab8ee; --ok: #4ade80; --ok-soft: #173322;
   --bad: #f87171; --bad-soft: #3b1d1d; --warn: #fbbf24; --shadow: none;
 }
 * { box-sizing: border-box; }
@@ -118,17 +120,17 @@ input[type=range] { padding: 0; }
 .flash { text-align: center; min-height: 300px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
 .flash .word { font-size: 40px; font-weight: 700; letter-spacing: .5px; }
 .flash .tagpill { align-self: center; }
-.flash .zh { font-size: 22px; }
+.flash .zh { font-size: 24px; color: var(--accent); font-weight: 600; }
 .flash .word.idiom { font-size: 32px; line-height: 1.25; text-wrap: balance; }
 .focus-card { padding-block: 14px; }
 .focus-row { justify-content: space-between; gap: 12px; }
 .focus-row h3 { margin: 0; }
 .focus-card p { margin: 8px 0 0; }
-.flash .ipa { font-size: 18px; color: var(--muted); font-family: "Segoe UI", "Lucida Sans Unicode", "Arial Unicode MS", sans-serif; margin-top: -6px; }
-.flash .en-def { font-size: 17px; max-width: 560px; align-self: center; }
-.flash .ex-zh { font-size: 15px; color: var(--muted); margin-top: -6px; }
-.flash .ex { font-size: 18px; color: var(--muted); cursor: pointer; }
-.flash .ex:hover { color: var(--text); }
+.flash .ipa { font-size: 22px; color: var(--muted); font-family: "Segoe UI", "Lucida Sans Unicode", "Arial Unicode MS", sans-serif; margin-top: -6px; }
+.flash .en-def { font-size: 20px; line-height: 1.45; max-width: 560px; align-self: center; }
+.flash .ex-zh { font-size: 18px; color: var(--muted); margin-top: -6px; }
+.flash .ex { font-size: 22px; line-height: 1.4; color: var(--ex); font-style: italic; cursor: pointer; }
+.flash .ex:hover { opacity: .8; }
 .rate { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
 .rate button { padding: 12px 6px; }
 .rate small { display: block; color: var(--muted); font-size: 12px; }
