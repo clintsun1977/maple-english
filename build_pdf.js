@@ -49,20 +49,20 @@ function section(title, groups, row) {
 }
 
 const page = `<!doctype html><html lang="zh"><head><meta charset="utf-8"><title>Maple English 词库与俗语</title><style>
-@page { size: A4; margin: 14mm 13mm 16mm;
+@page { size: A4 landscape; margin: 12mm 14mm 14mm;
   @bottom-center { content: counter(page) " / " counter(pages); font: 9px sans-serif; color: #888; } }
-body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; color: #222; font-size: 10.5px; line-height: 1.45; margin: 0; }
-.cover { text-align: center; padding: 30mm 0 10mm; }
+body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; color: #222; font-size: 12px; line-height: 1.45; margin: 0; }
+.cover { text-align: center; padding: 45mm 0 10mm; }
 .cover h1 { font-size: 30px; color: #c8102e; border: 0; margin: 0 0 6px; }
 .cover p { color: #666; margin: 2px; }
 h1 { font-size: 20px; color: #c8102e; border-bottom: 2px solid #c8102e; padding-bottom: 4px; margin: 0 0 8px; break-before: page; }
 h2 { font-size: 13px; background: #f6e9eb; color: #8a0f22; padding: 3px 8px; border-radius: 4px; margin: 10px 0 6px; break-after: avoid; }
 h2 small { color: #a77; font-weight: normal; }
-.cols { column-count: 2; column-gap: 7mm; }
+.cols { column-count: 3; column-gap: 7mm; column-rule: 1px solid #eee; }
 .e { break-inside: avoid; padding: 4px 0 5px; border-bottom: 1px dotted #ccc; }
 .h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
 .n { color: #aaa; font-size: 8.5px; min-width: 18px; }
-.h b { font-size: 12.5px; color: #111; }
+.h b { font-size: 14px; color: #111; }
 .ipa { color: #777; font-family: "Segoe UI", "Lucida Sans Unicode", sans-serif; }
 .zh { color: #c8102e; font-weight: 600; }
 .en, .ex, .exzh { padding-left: 24px; }
@@ -76,7 +76,7 @@ ${section("📖 单词", group(words, TAGS), wordRow)}
 ${section("💬 俗语", group(idioms, IDIOM_CATS), idiomRow)}
 </body></html>`;
 
-const name = mode === "sample" ? "MapleEnglish-样本" : "MapleEnglish-词库与俗语";
+const name = mode === "sample" ? "MapleEnglish-样本-横屏" : "MapleEnglish-词库与俗语-横屏";
 const htmlPath = path.resolve(`${name}.html`), pdfPath = path.resolve(`${name}.pdf`);
 fs.writeFileSync(htmlPath, page);
 const chrome = ["C:/Program Files/Google/Chrome/Application/chrome.exe",
