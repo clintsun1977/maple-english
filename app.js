@@ -671,7 +671,6 @@ function renderDict() {
 }
 function dictPlay(mul) {
   dictPlays++; renderDict(); speak(curDict().en, mul);
-  if (!isTouch) $("#dictInput").focus(); // 触屏设备不自动弹出键盘，等用户自己点输入框
 }
 $("#dictLevel").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
@@ -679,57 +678,41 @@ $("#dictLevel").addEventListener("click", e => {
   resetDict();
 });
 // 右侧按钮区：检查前后按钮数量相同、位置一一对应（播放↔再听，慢速↔慢速，检查↔跟读，空位↔错词，下一句不变）
-let dictResultMode = false, dictLastC = null;
+let dictResultMode = false;
 function renderDictDock() {
-  const dock = $("#dictDock"), d = curDict(), c = dictLastC;
+  // 显示答案前后都是 4 个位置：播放/再听、慢速、显示答案/空位、下一句，位置一一对应
+  const dock = $("#dictDock"), d = curDict();
   const spacer = `<button class="dock-spacer" tabindex="-1" aria-hidden="true">＋</button>`;
   if (!dictResultMode) {
     dock.innerHTML = `<button class="big" id="dictPlay">▶ 播放</button><button id="dictSlow">🐢 慢速</button>
-      <button class="primary" id="dictCheck">✓ 检查</button>${spacer}<button id="dictNext">下一句 →</button>`;
+      <button class="primary" id="dictShow">显示答案</button><button id="dictNext">下一句 →</button>`;
     $("#dictPlay").onclick = () => dictPlay(1);
     $("#dictSlow").onclick = () => dictPlay(0.7);
-    $("#dictCheck").onclick = doDictCheck;
+    $("#dictShow").onclick = showDictResult;
   } else {
-    dock.innerHTML = `<button id="dRe">🔊 再听</button><button id="dReSlow">🐢 慢速</button>
-      <button id="dShadow" class="rec">🎤 跟读这句</button>
-      ${c && c.missed.length ? `<button id="dAddMiss">＋ 错词入生词本</button>` : spacer}<button id="dictNext">下一句 →</button>`;
+    dock.innerHTML = `<button class="big" id="dRe">🔊 再听</button><button id="dReSlow">🐢 慢速</button>
+      ${spacer}<button id="dictNext">下一句 →</button>`;
     $("#dRe").onclick = () => speak(d.en);
     $("#dReSlow").onclick = () => speak(d.en, 0.7);
-    bindShadow($("#dShadow"), d.en, $("#dShadowRes"));
-    if ($("#dAddMiss")) $("#dAddMiss").onclick = () => {
-      const words = [...new Set(c.missed.join(" ").split(/\s+/).map(w => w.replace(/[^A-Za-z'-]/g, "")).filter(w => w.length > 2))];
-      const added = words.filter(w => addWord(w, "", d.en));
-      toast(added.length ? `已加入：${added.join(", ")}` : "这些词已在词库中");
-    };
   }
   $("#dictNext").onclick = () => { S.dictIdx[dictKey()] = dictPos() + 1; save(); resetDict(); dictPlay(1); };
 }
 function resetDict() {
-  dictPlays = 0; dictChecked = false; dictResultMode = false; dictLastC = null;
-  $("#dictInput").value = ""; $("#dictResult").innerHTML = "";
+  dictPlays = 0; dictChecked = false; dictResultMode = false;
+  $("#dictResult").innerHTML = `<div class="dict-hint muted">点「播放」听句子，听清楚后点「显示答案」核对</div>`;
   renderDict(); renderDictDock();
 }
-function showDictResult(c) {
+function showDictResult() {
   const d = curDict();
-  dictLastC = c; dictResultMode = true;
-  $("#dictResult").innerHTML = `<div class="result-box">
-    ${c ? scoreHTML(c.score) : `<span class="muted">答案：</span>`}
-    ${c ? diffHTML(c) : `<div class="diff">${esc(d.en)}</div>`}
-    <div class="muted">${esc(d.zh)}</div>
-    <div id="dShadowRes"></div></div>`;
-  renderDictDock();
+  dictResultMode = true;
+  if (!dictChecked) { today().dict++; save(); dictChecked = true; }
+  $("#dictResult").innerHTML = `<div class="dict-answer">
+    <div class="dict-en" title="点击再听">${esc(d.en)}</div>
+    <div class="dict-zh">${esc(d.zh)}</div></div>`;
+  $("#dictResult .dict-en").onclick = () => speak(d.en);
+  renderDict(); renderDictDock();
 }
-function doDictCheck() {
-  const val = $("#dictInput").value.trim();
-  if (!val) return toast("先把听到的内容打出来");
-  const c = compare(curDict().en, val);
-  if (!dictChecked) { today().dict++; S.dictStats.n++; S.dictStats.sum += c.score; save(); dictChecked = true; }
-  $("#dictInput").blur(); // 收起键盘，方便看结果
-  showDictResult(c); renderDict();
-}
-$("#dictReveal").onclick = () => showDictResult(null);
-$("#dictInput").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doDictCheck(); } });
-renderDictDock();
+resetDict();
 
 // 跟读按钮（听写和口语共用）
 function recordSpeak(c) { today().speak++; S.speakStats.n++; S.speakStats.sum += c.score; save(); }

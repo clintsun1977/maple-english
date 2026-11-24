@@ -197,7 +197,14 @@ body.layout-right .dock .dock-spacer, body.layout-left .dock .dock-spacer { disp
 body.layout-right .dock.pre, body.layout-left .dock.pre { background: transparent; border-color: transparent; box-shadow: none; pointer-events: none; }
 body.layout-right .dock.pre button, body.layout-left .dock.pre button { pointer-events: auto; }
 body.layout-right .dock.pre .dock-spacer, body.layout-left .dock.pre .dock-spacer { pointer-events: none; }
-.dict-meta { justify-content: space-between; margin-bottom: 8px; }
+.dict-card { min-height: 240px; display: flex; flex-direction: column; text-align: center; }
+.dict-plays { font-size: 16px; }
+#dictResult { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.dict-hint { font-size: 18px; }
+.dict-answer { display: flex; flex-direction: column; gap: 14px; padding: 8px 0; }
+.dict-en { font-size: 28px; line-height: 1.45; color: var(--ex); font-style: italic; cursor: pointer; text-wrap: balance; }
+.dict-zh { font-size: 21px; color: var(--muted); }
+#listen .toolbar .seg button, #dictProgress { font-size: 16px; }
 
 /* ===== 右手 / 左手布局：导航竖排在屏幕一侧靠下，主要按钮固定在同一侧的下半部 ===== */
 :root { --rail: 88px; --dockw: 176px; }
@@ -294,3 +301,4 @@ body.layout-left .typed-shadow .ts-row { justify-content: flex-start; }
   .rate { grid-template-columns: repeat(2, 1fr); }
   .deckitem b { min-width: 100px; }
 }
+#listen > p.small { font-size: 15px; }
