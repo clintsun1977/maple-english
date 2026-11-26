@@ -236,10 +236,10 @@ body.layout-left .dock { left: calc(var(--rail) + var(--side) + 12px); }
 body.layout-right .dock button, body.layout-left .dock button { width: 100%; min-height: 54px; font-size: 17px; }
 body.layout-right .dock .rate-btn, body.layout-left .dock .rate-btn { flex: none; }
 /* 有 dock 的页面给内容让出位置 */
-body.layout-right[data-tab="vocab"] main, body.layout-right[data-tab="listen"] main { padding-right: calc(var(--dockw) + 28px); }
-body.layout-left[data-tab="vocab"] main, body.layout-left[data-tab="listen"] main { padding-left: calc(var(--dockw) + 28px); }
+body.layout-right[data-tab="vocab"] main, body.layout-right[data-tab="listen"] main, body.layout-right[data-tab="learned"] main { padding-right: calc(var(--dockw) + 28px); }
+body.layout-left[data-tab="vocab"] main, body.layout-left[data-tab="listen"] main, body.layout-left[data-tab="learned"] main { padding-left: calc(var(--dockw) + 28px); }
 body.layout-right[data-tab="vocab"] main, body.layout-right[data-tab="listen"] main,
-body.layout-left[data-tab="vocab"] main, body.layout-left[data-tab="listen"] main { max-width: 1040px; }
+body.layout-left[data-tab="vocab"] main, body.layout-left[data-tab="listen"] main, body.layout-right[data-tab="learned"] main, body.layout-left[data-tab="learned"] main { max-width: 1040px; }
 /* 内容整体靠向拇指一侧 */
 body.layout-right main { margin-right: 0; }
 body.layout-left main { margin-left: 0; }
@@ -302,3 +302,7 @@ body.layout-left .typed-shadow .ts-row { justify-content: flex-start; }
   .deckitem b { min-width: 100px; }
 }
 #listen > p.small { font-size: 15px; }
+.paste-ex { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin: -4px 0 4px; }
+.paste-ex button { font-size: 15px; }
+.paste-ex span { font-style: italic; }
+#learned .flash { min-height: 300px; }

@@ -328,6 +328,7 @@ function bestOf(target, alts) {
 
 // ---------- 标签页 ----------
 let curTab = "home";
+let lastEx = ""; // 最近一次看到的例句（单词卡、俗语卡、听写答案、已学复习），添加生词时一键填入
 function showTab(t) {
   const navTab = t; // 导航高亮用：俗语也是单词页，只是换成俗语库
   if (t === "idioms") { setDeck("idioms"); t = "vocab"; }
@@ -340,6 +341,7 @@ function showTab(t) {
   if (t === "home") renderHome();
   if (t === "vocab") { renderFlash(); renderDeck(); }
   if (t === "listen") renderDict();
+  if (t === "learned") { shuffleLearned(); renderLearned(); }
   if (t === "speak") renderSpeak();
   history.replaceState(null, "", "#" + navTab);
 }
@@ -466,7 +468,6 @@ function setDeck(d) {
   if (vocabDeck === d) return;
   vocabDeck = d; deckFilter = "all"; revealed = false; buildQueue();
   $$("#deckSwitch button").forEach(b => b.classList.toggle("active", b.dataset.deck === d));
-  $("#btnAddWord").hidden = d === "idioms";
   $("#deckTitle").textContent = d === "idioms" ? "📚 俗语库" : "📚 我的词库";
 }
 // 切换学习方向：重排新词顺序，听写换成对应的三级
@@ -545,6 +546,7 @@ function renderFlash() {
     if (x.en) html += `<div class="en-def"><span class="tagpill">EN</span> ${esc(x.en)}</div>`;
     if (w.ex) html += `<div class="ex" id="fEx" title="点击朗读例句">🔈 ${esc(w.ex)}</div>`;
     if (w.ex && x.exZh) html += `<div class="ex-zh">${esc(x.exZh)}</div>`;
+    if (w.ex) lastEx = w.ex;
     const opts = [0, 1, 2, 3].map(q => ivLabel(nextState(c, q)));
     dockHtml += w.ex ? `<button id="fExPlay">🔈 例句</button>` : `<button class="dock-spacer" tabindex="-1" aria-hidden="true">🔈</button>`;
     dockHtml += `
@@ -579,6 +581,7 @@ function reveal() {
 function rate(q) {
   const w = queue[qPos], k = keyOf(w), wasNew = !S.cards[k];
   S.cards[k] = nextState(S.cards[k], q);
+  if (wasNew) S.cards[k].t0 = Date.now(); // 首次学习时间，"已学"列表按它排序
   const t = today();
   if (w.idiom) { if (wasNew) t.nwI = (t.nwI || 0) + 1; else t.rvI = (t.rvI || 0) + 1; }
   else if (wasNew) t.nw++; else t.rv++;
@@ -633,13 +636,96 @@ function addWord(w, zh, ex) {
   if (wordDeck().some(x => keyOf(x) === w.toLowerCase())) { toast(`"${w}" 已在词库中`); return false; }
   S.custom.push({ w, zh: zh.trim(), ex: ex.trim(), tag: "mine" }); save(); return true;
 }
-$("#btnAddWord").onclick = () => { $("#addW").value = $("#addZh").value = $("#addEx").value = ""; $("#addDlg").showModal(); };
+
+function openAddWord() {
+  $("#addW").value = $("#addZh").value = $("#addEx").value = "";
+  $("#pasteExBox").hidden = !lastEx;
+  $("#pasteExText").textContent = lastEx.length > 70 ? lastEx.slice(0, 70) + "…" : lastEx;
+  $("#addDlg").showModal();
+}
+$$(".add-word-btn").forEach(b => b.onclick = openAddWord);
+$("#pasteEx").onclick = () => { $("#addEx").value = lastEx; };
 $("#addDlg").addEventListener("close", () => {
   if ($("#addDlg").returnValue !== "ok") return;
   if (addWord($("#addW").value, $("#addZh").value, $("#addEx").value)) {
-    toast("已添加，会作为新词出现"); buildQueue(); renderFlash(); renderDeck();
+    toast("已添加到单词，会作为新词出现"); buildQueue(); renderFlash(); renderDeck();
   }
 });
+
+// ---------- 已学：自由复习 ----------
+let learnedKind = "all", learnedOrder = [], learnedPos = 0, learnedRevealed = false;
+function learnedAll() {
+  const src = learnedKind === "words" ? wordDeck() : learnedKind === "idioms" ? IDIOM_LIST : [...wordDeck(), ...IDIOM_LIST];
+  return src.filter(w => S.cards[keyOf(w)]);
+}
+function shuffleLearned() {
+  learnedOrder = learnedAll();
+  for (let i = learnedOrder.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [learnedOrder[i], learnedOrder[j]] = [learnedOrder[j], learnedOrder[i]]; }
+  learnedPos = 0; learnedRevealed = false;
+}
+const extraOf = w => w.idiom ? { en: w.en, exZh: w.exZh } : (XTRA[keyOf(w)] || {});
+function renderLearned() {
+  if (!learnedOrder.length || learnedPos >= learnedOrder.length) shuffleLearned();
+  const el = $("#learnedFlash"), dock = $("#learnedDock"), n = learnedOrder.length;
+  $("#learnedInfo").textContent = n ? `第 ${learnedPos + 1} / ${n} 个` : "";
+  const spacer = `<button class="dock-spacer" tabindex="-1" aria-hidden="true">·</button>`;
+  if (!n) {
+    el.innerHTML = `<div style="font-size:48px">📭</div><h2>还没有学过的${learnedKind === "idioms" ? "俗语" : learnedKind === "words" ? "单词" : "内容"}</h2><p class="muted">先去「单词」或「俗语」学几个，再回来复习。</p>`;
+    dock.innerHTML = ""; dock.classList.remove("pre");
+    renderLearnedList(); return;
+  }
+  const w = learnedOrder[learnedPos], x = extraOf(w);
+  const cat = (w.idiom ? IDIOM_TAGS : TAGS)[w.tag] || w.tag;
+  let html = `<span class="tagpill">${w.idiom ? "💬 俗语" : "📖 单词"} · ${esc(cat)}</span>
+    <div class="word${w.idiom ? " idiom" : ""}">${esc(w.w)}</div>`;
+  if (x.ipa) html += `<div class="ipa">${esc(x.ipa)}</div>`;
+  let dk = `<button id="lPlay">🔊 发音</button>`;
+  if (learnedRevealed) {
+    html += `<div class="zh">${esc(w.zh || "（未填写释义）")}</div>`;
+    if (x.en) html += `<div class="en-def"><span class="tagpill">EN</span> ${esc(x.en)}</div>`;
+    if (w.ex) { html += `<div class="ex" id="lEx" title="点击朗读例句">🔈 ${esc(w.ex)}</div>`; lastEx = w.ex; }
+    if (w.ex && x.exZh) html += `<div class="ex-zh">${esc(x.exZh)}</div>`;
+    dk += (w.ex ? `<button id="lExPlay">🔈 例句</button>` : spacer) +
+      `<button class="rate-btn r0" id="lAgain">没记住<small>加入今天复习</small></button><button class="primary" id="lNext">下一个 →</button>`;
+  } else {
+    // 占位按钮和"没记住"一样高，显示答案前后每个按钮位置不变
+    dk += `<button class="primary" id="lReveal">显示答案</button><button class="rate-btn dock-spacer" tabindex="-1" aria-hidden="true">没记住<small>-</small></button><button id="lNext">下一个 →</button>`;
+  }
+  el.innerHTML = html; dock.innerHTML = dk;
+  dock.classList.toggle("pre", !learnedRevealed);
+  $("#lPlay").onclick = () => speak(w.w, 0.9);
+  if ($("#lReveal")) $("#lReveal").onclick = () => { learnedRevealed = true; renderLearned(); if (w.ex) speak(w.ex); };
+  if ($("#lEx")) $("#lEx").onclick = () => speak(w.ex);
+  if ($("#lExPlay")) $("#lExPlay").onclick = () => speak(w.ex);
+  if ($("#lAgain")) $("#lAgain").onclick = () => {
+    S.cards[keyOf(w)].due = Date.now(); save();
+    if (!!w.idiom === isIdiom()) buildQueue();
+    toast("已加入今天的复习"); learnedPos++; learnedRevealed = false; renderLearned();
+  };
+  $("#lNext").onclick = () => { learnedPos++; learnedRevealed = false; renderLearned(); };
+  if (!learnedRevealed) speak(w.w, 0.9);
+  renderLearnedList();
+}
+function renderLearnedList() {
+  const all = learnedAll().sort((a, b) => (S.cards[keyOf(b)].t0 || 0) - (S.cards[keyOf(a)].t0 || 0));
+  const q = $("#learnedSearch").value.trim().toLowerCase();
+  const hit = all.filter(w => !q || w.w.toLowerCase().includes(q) || (w.zh || "").includes(q));
+  const list = hit.slice(0, 300);
+  $("#learnedCount").textContent = all.length;
+  $("#learnedShown").textContent = hit.length > list.length ? `共 ${hit.length} 个，显示最近学的 ${list.length} 个，可用搜索查找` : `共 ${hit.length} 个，最近学的在前`;
+  $("#learnedList").innerHTML = list.map(w => {
+    const ipa = w.idiom ? "" : extraOf(w).ipa;
+    return `<div class="deckitem"><b data-say="${esc(w.w)}">${esc(w.w)}</b>${ipa ? `<span class="muted small ipa-sm">${esc(ipa)}</span>` : ""}<span class="muted">${esc(w.zh)}</span><span class="st muted">${w.idiom ? "俗语" : "单词"}</span></div>`;
+  }).join("") || `<p class="muted">还没有内容</p>`;
+}
+$("#learnedKind").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  learnedKind = b.dataset.k; $$("#learnedKind button").forEach(x => x.classList.toggle("active", x === b));
+  shuffleLearned(); renderLearned();
+});
+$("#learnedShuffle").onclick = () => { shuffleLearned(); renderLearned(); toast("已打乱顺序"); };
+$("#learnedSearch").addEventListener("input", renderLearnedList);
+$("#learnedList").addEventListener("click", e => { const s = e.target.closest("[data-say]"); if (s) speak(s.dataset.say, 0.9); });
 
 // ---------- 听写 ----------
 let dictLv = 1, dictPlays = 0, dictChecked = false;
@@ -704,7 +790,7 @@ function resetDict() {
 }
 function showDictResult() {
   const d = curDict();
-  dictResultMode = true;
+  dictResultMode = true; lastEx = d.en;
   if (!dictChecked) { today().dict++; save(); dictChecked = true; }
   $("#dictResult").innerHTML = `<div class="dict-answer">
     <div class="dict-en" title="点击再听">${esc(d.en)}</div>

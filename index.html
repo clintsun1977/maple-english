@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Maple English</title>
-<link rel="stylesheet" href="style.css?v=202611241112">
+<link rel="stylesheet" href="style.css?v=202611261011">
 </head>
 <body>
 <header class="topbar">
@@ -13,6 +13,7 @@
     <button data-tab="home" class="active">今日</button>
     <button data-tab="vocab">单词</button>
     <button data-tab="idioms">俗语</button>
+    <button data-tab="learned">已学</button>
     <button data-tab="listen">听写</button>
     <button data-tab="speak">口语</button>
     <button data-tab="cbc">CBC 计划</button>
@@ -80,7 +81,7 @@
         <button data-mode="listen">听词</button>
       </div>
       <span class="muted" id="vocabQueueInfo"></span>
-      <button class="ghost" id="btnAddWord">＋ 添加生词</button>
+      <button class="ghost add-word-btn" id="btnAddWord">＋ 添加生词</button>
     </div>
     <div class="flash card" id="flash"></div>
     <div class="dock" id="vocabDock"></div>
@@ -93,6 +94,29 @@
     </details>
   </section>
 
+  <!-- 已学：自由复习所有学过的单词和俗语（不影响复习计划） -->
+  <section id="learned" class="page">
+    <div class="toolbar">
+      <div class="seg" id="learnedKind">
+        <button data-k="all" class="active">全部</button>
+        <button data-k="words">📖 单词</button>
+        <button data-k="idioms">💬 俗语</button>
+      </div>
+      <span class="muted" id="learnedInfo"></span>
+      <button class="ghost" id="learnedShuffle">🔀 打乱</button>
+      <button class="ghost add-word-btn">＋ 添加生词</button>
+    </div>
+    <div class="flash card" id="learnedFlash"></div>
+    <div class="dock" id="learnedDock"></div>
+    <details class="card">
+      <summary>📋 已学列表（<span id="learnedCount">0</span>）</summary>
+      <input id="learnedSearch" placeholder="搜索英文或中文……">
+      <p class="muted small" id="learnedShown"></p>
+      <div id="learnedList" class="decklist"></div>
+    </details>
+    <p class="muted small">这里可以随便翻看所有学过的内容，不会打乱原来的复习计划。没记住的点「没记住」，它会加入今天的复习。</p>
+  </section>
+
   <!-- 听写 -->
   <section id="listen" class="page">
     <div class="toolbar">
@@ -102,6 +126,7 @@
         <button data-lv="3">L3 新闻长句</button>
       </div>
       <span class="muted" id="dictProgress"></span>
+      <button class="ghost add-word-btn">＋ 添加生词</button>
     </div>
     <div class="dock" id="dictDock"></div>
     <div class="card dict-card">
@@ -215,6 +240,10 @@
     <label>单词 / 短语 <input id="addW" required></label>
     <label>中文意思 <input id="addZh"></label>
     <label>例句（可以粘贴新闻原句） <textarea id="addEx" rows="2"></textarea></label>
+    <div class="paste-ex" id="pasteExBox">
+      <button type="button" id="pasteEx">📋 填入刚才的例句</button>
+      <span class="muted small" id="pasteExText"></span>
+    </div>
     <div class="row">
       <button value="cancel" class="ghost" formnovalidate>取消</button>
       <button value="ok" class="primary" id="addOk">保存</button>
@@ -235,71 +264,71 @@
 
 <div id="toast"></div>
 
-<script src="data.js?v=202611241112"></script>
-<script src="data/v01.js?v=202611241112"></script>
-<script src="data/v02.js?v=202611241112"></script>
-<script src="data/v03.js?v=202611241112"></script>
-<script src="data/v04.js?v=202611241112"></script>
-<script src="data/v05.js?v=202611241112"></script>
-<script src="data/v06.js?v=202611241112"></script>
-<script src="data/v07.js?v=202611241112"></script>
-<script src="data/v08.js?v=202611241112"></script>
-<script src="data/v09.js?v=202611241112"></script>
-<script src="data/v10.js?v=202611241112"></script>
-<script src="data/v11.js?v=202611241112"></script>
-<script src="data/v12.js?v=202611241112"></script>
-<script src="data/v13.js?v=202611241112"></script>
-<script src="data/v14.js?v=202611241112"></script>
-<script src="data/v15.js?v=202611241112"></script>
-<script src="data/v16.js?v=202611241112"></script>
-<script src="data/v17.js?v=202611241112"></script>
-<script src="data/v18.js?v=202611241112"></script>
-<script src="data/v19.js?v=202611241112"></script>
-<script src="data/v20.js?v=202611241112"></script>
-<script src="data/v21.js?v=202611241112"></script>
-<script src="data/v22.js?v=202611241112"></script>
-<script src="data/v23.js?v=202611241112"></script>
-<script src="data/v24.js?v=202611241112"></script>
-<script src="data/x01.js?v=202611241112"></script>
-<script src="data/x02.js?v=202611241112"></script>
-<script src="data/x03.js?v=202611241112"></script>
-<script src="data/x04.js?v=202611241112"></script>
-<script src="data/x05.js?v=202611241112"></script>
-<script src="data/x06.js?v=202611241112"></script>
-<script src="data/x07.js?v=202611241112"></script>
-<script src="data/x08.js?v=202611241112"></script>
-<script src="data/x09.js?v=202611241112"></script>
-<script src="data/x10.js?v=202611241112"></script>
-<script src="data/x11.js?v=202611241112"></script>
-<script src="data/x12.js?v=202611241112"></script>
-<script src="data/x13.js?v=202611241112"></script>
-<script src="data/x14.js?v=202611241112"></script>
-<script src="data/x15.js?v=202611241112"></script>
-<script src="data/x16.js?v=202611241112"></script>
-<script src="data/x17.js?v=202611241112"></script>
-<script src="data/x18.js?v=202611241112"></script>
-<script src="data/x19.js?v=202611241112"></script>
-<script src="data/x20.js?v=202611241112"></script>
-<script src="data/x21.js?v=202611241112"></script>
-<script src="data/i1.js?v=202611241112"></script>
-<script src="data/i2.js?v=202611241112"></script>
-<script src="data/i3.js?v=202611241112"></script>
-<script src="data/i4.js?v=202611241112"></script>
-<script src="data/i5.js?v=202611241112"></script>
-<script src="data/d1.js?v=202611241112"></script>
-<script src="data/d2.js?v=202611241112"></script>
-<script src="data/d3.js?v=202611241112"></script>
-<script src="data/d4.js?v=202611241112"></script>
-<script src="data/d5.js?v=202611241112"></script>
-<script src="data/d6.js?v=202611241112"></script>
-<script src="data/d7.js?v=202611241112"></script>
-<script src="data/d8.js?v=202611241112"></script>
-<script src="data/d9.js?v=202611241112"></script>
-<script src="data/s1.js?v=202611241112"></script>
-<script src="data/s2.js?v=202611241112"></script>
-<script src="data/s3.js?v=202611241112"></script>
-<script src="data/s4.js?v=202611241112"></script>
-<script src="data/s5.js?v=202611241112"></script>
-<script src="app.js?v=202611241112"></script>
+<script src="data.js?v=202611261011"></script>
+<script src="data/v01.js?v=202611261011"></script>
+<script src="data/v02.js?v=202611261011"></script>
+<script src="data/v03.js?v=202611261011"></script>
+<script src="data/v04.js?v=202611261011"></script>
+<script src="data/v05.js?v=202611261011"></script>
+<script src="data/v06.js?v=202611261011"></script>
+<script src="data/v07.js?v=202611261011"></script>
+<script src="data/v08.js?v=202611261011"></script>
+<script src="data/v09.js?v=202611261011"></script>
+<script src="data/v10.js?v=202611261011"></script>
+<script src="data/v11.js?v=202611261011"></script>
+<script src="data/v12.js?v=202611261011"></script>
+<script src="data/v13.js?v=202611261011"></script>
+<script src="data/v14.js?v=202611261011"></script>
+<script src="data/v15.js?v=202611261011"></script>
+<script src="data/v16.js?v=202611261011"></script>
+<script src="data/v17.js?v=202611261011"></script>
+<script src="data/v18.js?v=202611261011"></script>
+<script src="data/v19.js?v=202611261011"></script>
+<script src="data/v20.js?v=202611261011"></script>
+<script src="data/v21.js?v=202611261011"></script>
+<script src="data/v22.js?v=202611261011"></script>
+<script src="data/v23.js?v=202611261011"></script>
+<script src="data/v24.js?v=202611261011"></script>
+<script src="data/x01.js?v=202611261011"></script>
+<script src="data/x02.js?v=202611261011"></script>
+<script src="data/x03.js?v=202611261011"></script>
+<script src="data/x04.js?v=202611261011"></script>
+<script src="data/x05.js?v=202611261011"></script>
+<script src="data/x06.js?v=202611261011"></script>
+<script src="data/x07.js?v=202611261011"></script>
+<script src="data/x08.js?v=202611261011"></script>
+<script src="data/x09.js?v=202611261011"></script>
+<script src="data/x10.js?v=202611261011"></script>
+<script src="data/x11.js?v=202611261011"></script>
+<script src="data/x12.js?v=202611261011"></script>
+<script src="data/x13.js?v=202611261011"></script>
+<script src="data/x14.js?v=202611261011"></script>
+<script src="data/x15.js?v=202611261011"></script>
+<script src="data/x16.js?v=202611261011"></script>
+<script src="data/x17.js?v=202611261011"></script>
+<script src="data/x18.js?v=202611261011"></script>
+<script src="data/x19.js?v=202611261011"></script>
+<script src="data/x20.js?v=202611261011"></script>
+<script src="data/x21.js?v=202611261011"></script>
+<script src="data/i1.js?v=202611261011"></script>
+<script src="data/i2.js?v=202611261011"></script>
+<script src="data/i3.js?v=202611261011"></script>
+<script src="data/i4.js?v=202611261011"></script>
+<script src="data/i5.js?v=202611261011"></script>
+<script src="data/d1.js?v=202611261011"></script>
+<script src="data/d2.js?v=202611261011"></script>
+<script src="data/d3.js?v=202611261011"></script>
+<script src="data/d4.js?v=202611261011"></script>
+<script src="data/d5.js?v=202611261011"></script>
+<script src="data/d6.js?v=202611261011"></script>
+<script src="data/d7.js?v=202611261011"></script>
+<script src="data/d8.js?v=202611261011"></script>
+<script src="data/d9.js?v=202611261011"></script>
+<script src="data/s1.js?v=202611261011"></script>
+<script src="data/s2.js?v=202611261011"></script>
+<script src="data/s3.js?v=202611261011"></script>
+<script src="data/s4.js?v=202611261011"></script>
+<script src="data/s5.js?v=202611261011"></script>
+<script src="app.js?v=202611261011"></script>
 </body>
 </html>
